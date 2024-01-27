@@ -1,1 +1,1 @@
-# js-validator
+# Validator

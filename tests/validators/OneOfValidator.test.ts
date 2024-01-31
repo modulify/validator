@@ -24,6 +24,7 @@ describe('OneOfValidator', () => {
     const validator = new OneOfValidator(new OneOf(accept))
 
     expect(validator.validate(value)).toEqual({
+      by: '@modulify/validator/OneOf',
       value,
       path: [],
     })

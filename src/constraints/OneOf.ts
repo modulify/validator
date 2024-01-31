@@ -1,4 +1,8 @@
-import type { Constraint } from '../../types'
+import type {
+  Constraint,
+  ConstraintViolation,
+  Key,
+} from '../../types'
 
 export default class OneOf<Expected = unknown, Actual = unknown> implements Constraint<Actual> {
   public readonly name = '@modulify/validator/OneOf'
@@ -11,5 +15,13 @@ export default class OneOf<Expected = unknown, Actual = unknown> implements Cons
   ) {
     this.values = Array.isArray(values) ? values : Object.values(values)
     this.equalTo = equalTo
+  }
+
+  toViolation (value: Actual, path: Key[]): ConstraintViolation<Actual> {
+    return {
+      by: this.name,
+      value,
+      path,
+    }
   }
 }

@@ -1,6 +1,7 @@
 import type {
   Constraint,
   ConstraintViolation,
+  Recursive,
   Validator,
 } from '../types'
 
@@ -13,7 +14,10 @@ import LengthValidator from '@/validators/LengthValidator'
 import OneOf from '@/constraints/OneOf'
 import OneOfValidator from '@/validators/OneOfValidator'
 
-import unsupported from '@/constraints/unsupported'
+import {
+  arraify,
+  flatten,
+} from '@/utils'
 
 const provider = {
   get (constraint: Constraint): Validator {
@@ -34,27 +38,6 @@ const isRecord = (value: object): boolean => {
   return constructorOf(value) === Object && Object.keys(Object.getPrototypeOf(value)).length === 0
 }
 
-type A<T> = T extends unknown[] ? T : T[]
-
-const arraify = <T> (value: T): A<T> => Array.isArray(value)
-  ? [...value] as A<T>
-  : [value] as A<T>
-
-export type Recursive<T> = T | Recursive<T>[]
-
-const flatten = <T>(recursive: Recursive<T>[]): T[] => {
-  const flattened: T[] = []
-  recursive.forEach(element => {
-    flattened.push(...(
-      Array.isArray(element)
-        ? flatten(element)
-        : [element]
-    ))
-  })
-
-  return flattened
-}
-
 const validate = <T>(
   value: T,
   constraints: Constraint<T> | Constraint<T>[],
@@ -69,14 +52,14 @@ const validate = <T>(
           return [...violations, ...validate(value[key], c.constraints[key], [...path, key])]
         }, [] as ConstraintViolation[]))
       } else {
-        violations.push(unsupported(value, path))
+        violations.push(c.toViolation(value, path, 'unsupported'))
       }
       continue
     }
 
     if (c instanceof Exists) {
       if (typeof value === 'undefined') {
-        violations.push({ value, path, reason: 'undefined' })
+        violations.push(c.toViolation(value, path))
         break
       }
       continue

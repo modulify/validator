@@ -1,19 +1,23 @@
-export interface Constraint<T = unknown> {
-  name: string
+export type Key = string | number
+export type Recursive<T> = T | Recursive<T>[]
+
+export interface ConstraintViolation<Value = unknown, Meta = unknown> {
+  by: string;
+  value: Value;
+  path?: Key[];
+  reason?: string;
+  meta?: Meta;
+}
+
+export interface Constraint<V = unknown> {
+  name: string;
+  toViolation (value: V, path: Key[], reason?: string): ConstraintViolation<V>
 }
 
 export type ConstraintCollection<T> = {
   [P in keyof T]: Constraint<T[P]> | Constraint<T[P]>[]
 }
 
-export type Key = string | number
-
-export interface ConstraintViolation<V = unknown> {
-  value: V;
-  path?: Key[];
-  reason?: string;
-}
-
-export interface Validator<V = unknown> {
-  validate (value: V, path?: Key[]): ConstraintViolation<V> | null;
+export interface Validator<Value = unknown> {
+  validate (value: Value, path?: Key[]): ConstraintViolation<Value> | null;
 }

@@ -1,15 +1,21 @@
 TARGET_HEADER=@echo -e '===== \e[34m' $@ '\e[0m'
+YARN=@docker-compose run --rm node yarn
 
 .PHONY: node_modules
-node_modules: package.json yarn.lock ## installs dependencies
+node_modules: package.json yarn.lock ## Installs dependencies
 	$(TARGET_HEADER)
-	@docker-compose run --rm node yarn install --silent
+	$(YARN) install --silent
 	@touch node_modules || true
 
-.PHONY: test
-test:
+.PHONY: build
+build: ## Creates a dist catalogue with library build
 	$(TARGET_HEADER)
-	@docker-compose run --rm node yarn test
+	$(YARN) build
+
+.PHONY: test
+test: ## Runs autotests
+	$(TARGET_HEADER)
+	$(YARN) test
 
 .PHONY: help
 help: ## Calls recipes list

@@ -2,33 +2,17 @@ import type {
   Constraint,
   ConstraintViolation,
   Recursive,
-  Validator,
 } from '../types'
 
 import Collection from '@/constraints/Collection'
 import Exists from '@/constraints/Exists'
-
-import Length from '@/constraints/Length'
-import LengthValidator from '@/validators/LengthValidator'
-
-import OneOf from '@/constraints/OneOf'
-import OneOfValidator from '@/validators/OneOfValidator'
 
 import {
   arraify,
   flatten,
 } from '@/utils'
 
-const provider = {
-  get (constraint: Constraint): Validator {
-    switch (true) {
-      case constraint instanceof Length:
-        return new LengthValidator(constraint)
-      case constraint instanceof OneOf:
-        return new OneOfValidator(constraint)
-    }
-  }
-}
+import provider from '@/provider'
 
 const constructorOf = (value: object): unknown => {
   return Object.getPrototypeOf(value).constructor
@@ -41,7 +25,7 @@ const isRecord = (value: object): boolean => {
 const validate = <T>(
   value: T,
   constraints: Constraint<T> | Constraint<T>[],
-  path: (string | number)[] = [],
+  path: (string | number)[] = []
 ): ConstraintViolation[] => {
   const violations: Recursive<ConstraintViolation>[] = []
 

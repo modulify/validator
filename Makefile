@@ -12,6 +12,11 @@ build: ## Creates a dist catalogue with library build
 	$(TARGET_HEADER)
 	$(YARN) build
 
+.PHONY: eslint
+eslint: ## Runs eslint
+	$(TARGET_HEADER)
+	$(YARN) lint
+
 .PHONY: test
 test: ## Runs autotests
 	$(TARGET_HEADER)

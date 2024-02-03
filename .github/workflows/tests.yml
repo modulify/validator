@@ -7,7 +7,42 @@ on:
     branches: [ "main" ]
 
 jobs:
+  eslint:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [ 18.x, 20.x ]
+
+    steps:
+    - name: Using branch ${{ github.ref }} for repository ${{ github.repository }}.
+      uses: actions/checkout@v3
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Cache dependencies
+      id: cache-deps
+      uses: actions/cache@v3
+      with:
+        path: .yarn
+        key: ${{ runner.OS }}-node-${{ matrix.node-version }}-yarn-${{ hashFiles('**/yarn.lock') }}
+        restore-keys: |
+          ${{ runner.OS }}-node-${{ matrix.node-version }}-yarn-
+
+    - name: Install dependencies
+      run: |
+        yarn install
+
+    - name: Run lint
+      run: |
+        yarn lint
+
   tests:
+    needs: eslint
+
     runs-on: ubuntu-latest
 
     strategy:
@@ -23,7 +58,19 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
 
-    - name: Run tests
+    - name: Cache dependencies
+      id: cache-deps
+      uses: actions/cache@v3
+      with:
+        path: .yarn
+        key: ${{ runner.OS }}-node-${{ matrix.node-version }}-yarn-${{ hashFiles('**/yarn.lock') }}
+        restore-keys: |
+          ${{ runner.OS }}-node-${{ matrix.node-version }}-yarn-
+
+    - name: Install dependencies
       run: |
         yarn install
+
+    - name: Run tests
+      run: |
         yarn test

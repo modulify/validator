@@ -8,6 +8,7 @@
   "types": "types/index.d.ts",
   "scripts": {
     "build": "rollup --config rollup.config.ts --configPlugin typescript",
+    "lint": "eslint --ext .js,.mjs,.ts src tests types",
     "test": "jest --config jest.config.ts"
   },
   "devDependencies": {

@@ -31,7 +31,7 @@ export default class Length<T = unknown> implements Constraint<T> {
         exact: this.exact,
         max: this.max,
         min: this.min,
-      }[reason]
+      }[reason],
     }
   }
 }

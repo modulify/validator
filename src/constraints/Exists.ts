@@ -4,10 +4,10 @@ import type {
   Key,
 } from '../../types'
 
-export default class Exists<T = unknown> implements Constraint<T> {
+export default class Exists implements Constraint {
   public readonly name = '@modulify/validator/Exists'
 
-  toViolation (value: T, path: Key[]): ConstraintViolation<T> {
+  toViolation (value: unknown, path: Key[]): ConstraintViolation {
     return {
       by: this.name,
       value,

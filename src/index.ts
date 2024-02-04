@@ -84,6 +84,9 @@ const createValidator = (
 ): Validator => new V(provider)
 
 export {
+  Collection,
+  Exists,
   ProviderChain,
   createValidator,
+  validate,
 }

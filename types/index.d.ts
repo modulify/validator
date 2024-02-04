@@ -18,13 +18,50 @@ export type ConstraintCollection<T> = {
   [P in keyof T]: Constraint<T[P]> | Constraint<T[P]>[]
 }
 
+/**
+ * Works only with a specific constraint
+ */
 export interface ConstraintValidator<Value = unknown> {
   validate (value: Value, path?: Key[]): ConstraintViolation<Value> | null;
 }
 
+/**
+ * Used by Validator|FunctionalValidator to determine, how a specific constraint should be validated.
+ */
 export interface Provider {
   get (constraint: Constraint): ConstraintValidator | null;
   override (provider: Provider): Provider;
+}
+
+export type FunctionalValidator = <Value>(
+  provider: Provider,
+  value: Value,
+  constraints: Constraint<Value> | Constraint<Value>[],
+  path?: Key[]
+) => ConstraintViolation[]
+
+export interface Validator {
+  override (provider: Provider): Validator;
+
+  validate<Value>(
+    value: Value,
+    constraints: Constraint<Value> | Constraint<Value>[],
+  ): ConstraintViolation[]
+}
+
+export declare class Collection<T = Record<string, unknown>> implements Constraint<T> {
+  public readonly name = '@modulify/validator/Collection'
+  public readonly constraints: ConstraintCollection<T>
+
+  constructor (constraints: ConstraintCollection<T>);
+
+  toViolation (value: T, path: Key[], reason: string): ConstraintViolation<T>;
+}
+
+export default class Exists implements Constraint {
+  public readonly name = '@modulify/validator/Exists'
+
+  toViolation (value: unknown, path: Key[]): ConstraintViolation;
 }
 
 export declare class ProviderChain implements Provider {
@@ -37,11 +74,6 @@ export declare class ProviderChain implements Provider {
   override (provider: Provider): Provider;
 }
 
-export interface Validator {
-  override (provider: Provider): Validator;
+export declare const createValidator: (provider?: Provider | null) => Validator;
 
-  validate<Value>(
-    value: Value,
-    constraints: Constraint<Value> | Constraint<Value>[],
-  ): ConstraintViolation[]
-}
+export declare const validate: FunctionalValidator;

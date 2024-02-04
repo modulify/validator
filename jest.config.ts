@@ -6,4 +6,5 @@ export default {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  coverageReporters: ['html', 'text'],
 } as Config.InitialOptions

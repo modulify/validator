@@ -8,17 +8,21 @@ node_modules: package.json yarn.lock ## Installs dependencies
 	@touch node_modules || true
 
 .PHONY: build
-build: ## Creates a dist catalogue with library build
+build: node_modules ## Creates a dist catalogue with library build
 	$(TARGET_HEADER)
 	$(YARN) build
 
+.PHONY: husky
+husky: node_modules ## Adds husky git hooks with commit content checks
+	@docker-compose run --rm node npx husky init
+
 .PHONY: eslint
-eslint: ## Runs eslint
+eslint: node_modules ## Runs eslint
 	$(TARGET_HEADER)
 	$(YARN) lint
 
 .PHONY: test
-test: ## Runs autotests
+test: node_modules ## Runs autotests
 	$(TARGET_HEADER)
 	$(YARN) test
 

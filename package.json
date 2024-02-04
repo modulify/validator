@@ -9,6 +9,7 @@
   "scripts": {
     "build": "rollup --config rollup.config.ts --configPlugin typescript",
     "lint": "eslint --ext .js,.mjs,.ts src tests types",
+    "prepare": "husky",
     "release": "standard-version",
     "release:minor": "standard-version --release-as minor",
     "release:patch": "standard-version --release-as patch",
@@ -25,6 +26,7 @@
     "@typescript-eslint/eslint-plugin": "^6.19.1",
     "@typescript-eslint/parser": "^6.19.1",
     "eslint": "^8.56.0",
+    "husky": "^9.0.10",
     "jest": "^29.7.0",
     "rollup": "^4.9.6",
     "rollup-plugin-delete": "^2.0.0",
@@ -43,5 +45,10 @@
   ],
   "contributors": [
     "Zaitsev Kirill <zaytsev.cmath10@gmail.com>"
-  ]
+  ],
+  "husky": {
+    "hooks": {
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
+    }
+  }
 }

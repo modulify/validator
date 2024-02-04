@@ -153,7 +153,7 @@ describe('override', () => {
     }
   }
 
-  test('does not use unknown rules', () => {
+  test('fails if some rules are unknown', () => {
     expect(() => {
       validator.validate('my@test.test', new Email(), false)
     }).toThrow('No validator for constraint @app/validator/Email')

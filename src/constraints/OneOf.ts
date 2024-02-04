@@ -19,11 +19,12 @@ export default class OneOf<Expected = unknown, Actual = unknown> implements Cons
     this.equalTo = equalTo
   }
 
-  toViolation (value: Actual, path: Key[]): ConstraintViolation<Actual> {
+  toViolation (value: Actual, path: Key[]): ConstraintViolation<Actual, Expected[]> {
     return {
       by: this.name,
       value,
       path,
+      meta: this.values,
     }
   }
 }

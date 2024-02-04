@@ -59,6 +59,7 @@ describe('validate', () => {
       by: '@modulify/validator/OneOf',
       value: '',
       path: [],
+      meta: ['filled', 'outline', 'tonal'],
     }])
   })
 })

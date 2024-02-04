@@ -4,6 +4,7 @@ export type Recursive<T> = T | Recursive<T>[]
 export interface ConstraintViolation<Value = unknown, Meta = unknown> {
   by: string | symbol;
   value: Value;
+  /** Path to a property, if a constraint is used as part of a `Collection` for checking some object's structure */
   path?: Key[];
   reason?: string | symbol;
   meta?: Meta;
@@ -59,7 +60,7 @@ export declare class Collection<T = Record<string, unknown>> implements Constrai
 }
 
 /**
- * If value should be defined. Interrupts validation of a value, if produces a violation
+ * If the value should be defined. Interrupts validation of a value, if it produces a violation
  */
 export declare class Exists implements Constraint {
   public readonly name = '@modulify/validator/Exists'

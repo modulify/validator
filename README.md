@@ -1,6 +1,7 @@
 # `@modulify/validator`
 
 [![codecov](https://codecov.io/gh/modulify/validator/branch/main/graph/badge.svg)](https://codecov.io/gh/modulify/validator)
+[![Tests Status](https://github.com/modulify/validator/actions/workflows/tests.yml/badge.svg)](https://github.com/modulify/validator/actions)
 
 This library provides a declarative validation util.
 

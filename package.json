@@ -15,7 +15,7 @@
     "release:patch": "standard-version --release-as patch",
     "release:major": "standard-version --release-as major",
     "test": "jest --config jest.config.ts",
-    "test:coverage": "jest --config jest.config.ts --coverage"
+    "test:coverage": "jest --config jest.config.ts --coverage --coverageReporters=lcov"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.7.1",

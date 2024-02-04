@@ -64,7 +64,7 @@ describe('validate', () => {
   })
 })
 
-describe('overrides', () => {
+describe('override', () => {
   const validator = createValidator()
 
   class Email implements Constraint {

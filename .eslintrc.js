@@ -20,5 +20,6 @@ module.exports = {
     }],
     'no-debugger': 'error',
     'object-curly-spacing': ['error', 'always'],
+    'quotes': ['error', 'single'],
   },
 }

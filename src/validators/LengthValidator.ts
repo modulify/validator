@@ -1,7 +1,11 @@
-import type { Key, Validator } from '../../types'
+import type {
+  ConstraintValidator,
+  Key,
+} from '../../types'
+
 import type Length from '@/constraints/Length'
 
-export default class LengthValidator<V = unknown> implements Validator<V> {
+export default class LengthValidator<V = unknown> implements ConstraintValidator<V> {
   public readonly constraint: Length<V>
 
   constructor (constraint: Length<V>) {

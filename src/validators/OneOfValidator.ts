@@ -1,10 +1,14 @@
-import type { Key, Validator } from '../../types'
+import type {
+  ConstraintValidator,
+  Key,
+} from '../../types'
+
 import type OneOf from '@/constraints/OneOf'
 
 export default class OneOfValidator<
   Allowed = unknown,
   Actual = unknown
-> implements Validator<Actual> {
+> implements ConstraintValidator<Actual> {
   public readonly constraint: OneOf<Allowed, Actual>
 
   constructor (constraint: OneOf<Allowed, Actual>) {

@@ -1,7 +1,10 @@
 import type {
   Constraint,
   ConstraintViolation,
+  Key,
+  Provider,
   Recursive,
+  Validator,
 } from '../types'
 
 import Collection from '@/constraints/Collection'
@@ -10,22 +13,16 @@ import Exists from '@/constraints/Exists'
 import {
   arraify,
   flatten,
+  isRecord,
 } from '@/utils'
 
-import provider from '@/provider'
+import ProviderChain from '@/provider'
 
-const constructorOf = (value: object): unknown => {
-  return Object.getPrototypeOf(value).constructor
-}
-
-const isRecord = (value: object): boolean => {
-  return constructorOf(value) === Object && Object.keys(Object.getPrototypeOf(value)).length === 0
-}
-
-const validate = <T>(
-  value: T,
-  constraints: Constraint<T> | Constraint<T>[],
-  path: (string | number)[] = []
+const validate = <Value>(
+  provider: Provider,
+  value: Value,
+  constraints: Constraint<Value> | Constraint<Value>[],
+  path: Key[] = []
 ): ConstraintViolation[] => {
   const violations: Recursive<ConstraintViolation>[] = []
 
@@ -33,7 +30,7 @@ const validate = <T>(
     if (c instanceof Collection) {
       if (isRecord(value as object)) {
         violations.push(Object.keys(c.constraints).reduce((violations, key) => {
-          return [...violations, ...validate(value[key], c.constraints[key], [...path, key])]
+          return [...violations, ...validate(provider, value[key], c.constraints[key], [...path, key])]
         }, [] as ConstraintViolation[]))
       } else {
         violations.push(c.toViolation(value, path, 'unsupported'))
@@ -60,7 +57,33 @@ const validate = <T>(
     }
   }
 
-  return flatten(violations)
+  return flatten(violations) as ConstraintViolation[]
 }
 
-export default validate
+class V implements Validator {
+  private readonly _provider: Provider
+
+  constructor (provider: Provider | null = null) {
+    this._provider = provider ?? new ProviderChain()
+  }
+
+  override (provider: Provider) {
+    return new V(this._provider.override(provider))
+  }
+
+  validate<Value>(
+    value: Value,
+    constraints: Constraint<Value> | Constraint<Value>[]
+  ): ConstraintViolation[] {
+    return validate(this._provider, value, constraints)
+  }
+}
+
+const createValidator = (
+  provider: Provider | null = null
+): Validator => new V(provider)
+
+export {
+  ProviderChain,
+  createValidator,
+}

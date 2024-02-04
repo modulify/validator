@@ -4,7 +4,7 @@ import type {
   Key,
 } from '../../types'
 
-export default class Length<T = unknown> implements Constraint<T> {
+export default class Length<Value = unknown> implements Constraint<Value> {
   public readonly name = '@modulify/validator/Length'
 
   public readonly exact: number | null
@@ -21,7 +21,11 @@ export default class Length<T = unknown> implements Constraint<T> {
     this.min = options.min ?? null
   }
 
-  toViolation (value: T, path: Key[], reason: 'exact' | 'max' | 'min' | 'unsupported'): ConstraintViolation<T> {
+  toViolation (
+    value: Value,
+    path: Key[],
+    reason: 'exact' | 'max' | 'min' | 'unsupported'
+  ): ConstraintViolation<Value, number> {
     return {
       by: this.name,
       value,

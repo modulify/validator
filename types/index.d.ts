@@ -2,10 +2,10 @@ export type Key = string | number
 export type Recursive<T> = T | Recursive<T>[]
 
 export interface ConstraintViolation<Value = unknown, Meta = unknown> {
-  by: string;
+  by: string | symbol;
   value: Value;
   path?: Key[];
-  reason?: string;
+  reason?: string | symbol;
   meta?: Meta;
 }
 
@@ -58,10 +58,52 @@ export declare class Collection<T = Record<string, unknown>> implements Constrai
   toViolation (value: T, path: Key[], reason: string): ConstraintViolation<T>;
 }
 
-export default class Exists implements Constraint {
+/**
+ * If value should be defined. Interrupts validation of a value, if produces a violation
+ */
+export declare class Exists implements Constraint {
   public readonly name = '@modulify/validator/Exists'
 
   toViolation (value: unknown, path: Key[]): ConstraintViolation;
+}
+
+export declare class Length<Value = unknown> implements Constraint<Value> {
+  public readonly name = '@modulify/validator/Length'
+
+  public readonly exact: number | null
+  public readonly max: number | null
+  public readonly min: number | null
+
+  constructor (options: {
+    exact?: number
+    max?: number
+    min?: number
+  });
+
+  toViolation (
+    value: Value,
+    path: Key[],
+    reason: 'exact' | 'max' | 'min' | 'unsupported'
+  ): ConstraintViolation<Value, number>;
+}
+
+type EqualPredicate<Expected> = (a: Expected, b: unknown) => boolean
+
+export declare class OneOf<Expected = unknown, Actual = unknown> implements Constraint<Actual> {
+  public readonly name = '@modulify/validator/OneOf'
+  public readonly values: Expected[]
+  public readonly equalTo: EqualPredicate<Expected>
+
+  /**
+   * @param values Array of allowed values
+   * @param equalTo Defaults to strict comparison via `===`
+   */
+  constructor (
+    values: Expected[] | Record<string, Expected>,
+    equalTo?: EqualPredicate<Expected>
+  );
+
+  toViolation (value: Actual, path: Key[]): ConstraintViolation<Actual>;
 }
 
 export declare class ProviderChain implements Provider {

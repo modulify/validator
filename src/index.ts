@@ -9,14 +9,16 @@ import type {
 
 import Collection from '@/constraints/Collection'
 import Exists from '@/constraints/Exists'
+import Length from '@/constraints/Length'
+import OneOf from '@/constraints/OneOf'
+
+import ProviderChain from '@/provider'
 
 import {
   arraify,
   flatten,
   isRecord,
 } from '@/utils'
-
-import ProviderChain from '@/provider'
 
 const validate = <Value>(
   provider: Provider,
@@ -86,6 +88,8 @@ const createValidator = (
 export {
   Collection,
   Exists,
+  Length,
+  OneOf,
   ProviderChain,
   createValidator,
   validate,

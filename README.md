@@ -1,5 +1,7 @@
 # `@modulify/validator`
 
+[![codecov](https://codecov.io/gh/modulify/validator/branch/main/graph/badge.svg)](https://codecov.io/gh/modulify/validator)
+
 This library provides a declarative validation util.
 
 The util does not provide any text messages in the constraints produced and gives only metadata that can

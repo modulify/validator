@@ -73,4 +73,10 @@ jobs:
 
     - name: Run tests
       run: |
-        yarn test
+        yarn test:coverage
+
+    - name: Upload coverage to GitHub Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage
+        path: coverage/

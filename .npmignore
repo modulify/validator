@@ -1,6 +1,7 @@
 .github
 .husky
 .idea
+coverage
 /node_modules
 src
 tests

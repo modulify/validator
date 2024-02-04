@@ -22,11 +22,53 @@ import {
   createValidator,
 } from '@/index'
 
-describe('validate', () => {
+describe('validate synchronously', () => {
   const validator = createValidator()
 
   test('Collection', () => {
     expect(validator.validate({
+      form: {
+        nickname: '',
+        password: '',
+      },
+    }, new Collection({
+      form: [
+        new Exists(),
+        new Collection({
+          nickname: new Length({ min: 4 }),
+          password: new Length({ min: 6 }),
+        }),
+      ],
+    }), false)).toEqual([{
+      by: '@modulify/validator/Length',
+      value: '',
+      path: ['form', 'nickname'],
+      reason: 'min',
+      meta: 4,
+    }, {
+      by: '@modulify/validator/Length',
+      value: '',
+      path: ['form', 'password'],
+      reason: 'min',
+      meta: 6,
+    }])
+  })
+
+  test('OneOf', () => {
+    expect(validator.validate('', new OneOf(['filled', 'outline', 'tonal']), false)).toEqual([{
+      by: '@modulify/validator/OneOf',
+      value: '',
+      path: [],
+      meta: ['filled', 'outline', 'tonal'],
+    }])
+  })
+})
+
+describe('validate asynchronously', () => {
+  const validator = createValidator()
+
+  test('Collection', async () => {
+    expect(await validator.validate({
       form: {
         nickname: '',
         password: '',
@@ -54,8 +96,8 @@ describe('validate', () => {
     }])
   })
 
-  test('OneOf', () => {
-    expect(validator.validate('', new OneOf(['filled', 'outline', 'tonal']))).toEqual([{
+  test('OneOf', async () => {
+    expect(await validator.validate('', new OneOf(['filled', 'outline', 'tonal']))).toEqual([{
       by: '@modulify/validator/OneOf',
       value: '',
       path: [],
@@ -95,9 +137,25 @@ describe('override', () => {
     }
   }
 
+  class AsyncEmailValidator implements ConstraintValidator {
+    private readonly _constraint: Email
+
+    constructor (constraint: Email) {
+      this._constraint = constraint
+    }
+
+    validate (value: unknown, path?: Key[]): Promise<ConstraintViolation | null> {
+      if (!(typeof value === 'string') || !/\S+@\S+\.\S+/.test(value)) {
+        return Promise.resolve(this._constraint.toViolation(value, path))
+      }
+
+      return Promise.resolve(null)
+    }
+  }
+
   test('does not use unknown rules', () => {
     expect(() => {
-      validator.validate('my@test.test', new Email())
+      validator.validate('my@test.test', new Email(), false)
     }).toThrow('No validator for constraint @app/validator/Email')
   })
 
@@ -112,9 +170,33 @@ describe('override', () => {
       }
     })
 
-    expect(overridden.validate('my@test.test', new Email())).toEqual([])
+    expect(overridden.validate('my@test.test', new Email(), false)).toEqual([])
 
     expect(overridden.validate(
+      { email: 'not-email' },
+      new Collection({ email: new Email() }),
+      false
+    )).toEqual([{
+      by: '@app/validator/Email',
+      value: 'not-email',
+      path: ['email'],
+    }])
+  })
+
+  test('uses new asynchronous rules', async () => {
+    const overridden = validator.override(new class implements Provider {
+      get (constraint: Constraint) {
+        return constraint instanceof Email ? new AsyncEmailValidator(constraint) : null
+      }
+
+      override (provider: Provider): Provider {
+        return new ProviderChain(provider, this)
+      }
+    })
+
+    expect(await overridden.validate('my@test.test', new Email())).toEqual([])
+
+    expect(await overridden.validate(
       { email: 'not-email' },
       new Collection({ email: new Email() })
     )).toEqual([{

@@ -1,4 +1,4 @@
-export type Key = string | number
+export type Key = number | string | symbol
 export type Recursive<T> = T | Recursive<T>[]
 
 export interface ConstraintViolation<Value = unknown, Meta = unknown> {
@@ -23,7 +23,7 @@ export type ConstraintCollection<T> = {
  * Works only with a specific constraint
  */
 export interface ConstraintValidator<Value = unknown> {
-  validate (value: Value, path?: Key[]): ConstraintViolation<Value> | null;
+  validate (value: Value, path?: Key[]): ConstraintViolation<Value> | null | Promise<ConstraintViolation<Value> | null>;
 }
 
 /**
@@ -34,20 +34,27 @@ export interface Provider {
   override (provider: Provider): Provider;
 }
 
-export type FunctionalValidator = <Value>(
+type MaybePromise<
+  Value,
+  Asynchronously extends boolean = true
+> = Asynchronously extends true ? Promise<Value> : Value
+
+export type FunctionalValidator = <Value, Asynchronously extends boolean = true>(
   provider: Provider,
   value: Value,
   constraints: Constraint<Value> | Constraint<Value>[],
-  path?: Key[]
-) => ConstraintViolation[]
+  path?: Key[],
+  asynchronously?: Asynchronously
+) => MaybePromise<ConstraintViolation[], Asynchronously>
 
 export interface Validator {
   override (provider: Provider): Validator;
 
-  validate<Value>(
+  validate<Value, Asynchronously extends boolean = true>(
     value: Value,
     constraints: Constraint<Value> | Constraint<Value>[],
-  ): ConstraintViolation[]
+    asynchronously?: Asynchronously
+  ): MaybePromise<ConstraintViolation[], Asynchronously>
 }
 
 export declare class Collection<T = Record<string, unknown>> implements Constraint<T> {
@@ -114,6 +121,7 @@ export declare class ProviderChain implements Provider {
   );
 
   get (constraint: Constraint): ConstraintValidator | null;
+
   override (provider: Provider): Provider;
 }
 

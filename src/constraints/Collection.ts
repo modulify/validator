@@ -13,6 +13,15 @@ export default class Collection<T = Record<string, unknown>> implements Constrai
     this.constraints = constraints
   }
 
+  reduce <U, P extends keyof ConstraintCollection<T>> (
+    reducer: (accumulator: U, constraint: ConstraintCollection<T>[P], property: P) => U,
+    initial: U
+  ): U {
+    return (Object.keys(this.constraints) as P[]).reduce((accumulator, key) => {
+      return reducer(accumulator, this.constraints[key], key)
+    }, initial)
+  }
+
   toViolation (value: T, path: Key[], reason: string): ConstraintViolation<T> {
     return {
       by: this.name,

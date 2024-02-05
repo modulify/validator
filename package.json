@@ -2,7 +2,7 @@
   "name": "@modulify/validator",
   "description": "Declarative validation util for JavaScript",
   "license": "MIT",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
   "types": "types/index.d.ts",

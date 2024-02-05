@@ -39,7 +39,7 @@ const violations = validator.validate({
       password: new Length({ min: 6 }),
     }),
   ],
-})) /* [{
+}), /* do not set or set to true for async validation */ false) /* [{
   by: '@modulify/validator/Length',
   value: '',
   path: ['form', 'nickname'],

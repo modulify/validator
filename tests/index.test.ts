@@ -13,6 +13,7 @@ import {
 } from '@jest/globals'
 
 import Collection from '@/constraints/Collection'
+import Each from '@/constraints/Each'
 import Exists from '@/constraints/Exists'
 import Length from '@/constraints/Length'
 import OneOf from '@/constraints/OneOf'
@@ -22,7 +23,7 @@ import {
   createValidator,
 } from '@/index'
 
-describe('validate synchronously', () => {
+describe('validates synchronously', () => {
   const validator = createValidator()
 
   test('Collection', () => {
@@ -54,6 +55,45 @@ describe('validate synchronously', () => {
     }])
   })
 
+  describe('Each', () => {
+    test('checks entries in array', () => {
+      expect(validator.validate([
+        { name: '' },
+        { name: 'longEnough' },
+      ], new Each([
+        new Collection({
+          name: new Length({ min: 4, max: 6 }),
+        }),
+      ]), false)).toEqual([{
+        by: '@modulify/validator/Length',
+        value: '',
+        path: [0, 'name'],
+        reason: 'min',
+        meta: 4,
+      }, {
+        by: '@modulify/validator/Length',
+        value: 'longEnough',
+        path: [1, 'name'],
+        reason: 'max',
+        meta: 6,
+      }])
+    })
+
+    test('checks single value', () => {
+      expect(validator.validate({ name: 'longEnough' }, new Each([
+        new Collection({
+          name: new Length({ min: 4, max: 6 }),
+        }),
+      ]), false)).toEqual([{
+        by: '@modulify/validator/Length',
+        value: 'longEnough',
+        path: ['name'],
+        reason: 'max',
+        meta: 6,
+      }])
+    })
+  })
+
   test('OneOf', () => {
     expect(validator.validate('', new OneOf(['filled', 'outline', 'tonal']), false)).toEqual([{
       by: '@modulify/validator/OneOf',
@@ -64,7 +104,7 @@ describe('validate synchronously', () => {
   })
 })
 
-describe('validate asynchronously', () => {
+describe('validates asynchronously', () => {
   const validator = createValidator()
 
   test('Collection', async () => {
@@ -94,6 +134,45 @@ describe('validate asynchronously', () => {
       reason: 'min',
       meta: 6,
     }])
+  })
+
+  describe('Each', () => {
+    test('checks entries in array', async () => {
+      expect(await validator.validate([
+        { name: '' },
+        { name: 'longEnough' },
+      ], new Each([
+        new Collection({
+          name: new Length({ min: 4, max: 6 }),
+        }),
+      ]))).toEqual([{
+        by: '@modulify/validator/Length',
+        value: '',
+        path: [0, 'name'],
+        reason: 'min',
+        meta: 4,
+      }, {
+        by: '@modulify/validator/Length',
+        value: 'longEnough',
+        path: [1, 'name'],
+        reason: 'max',
+        meta: 6,
+      }])
+    })
+
+    test('checks single value', async () => {
+      expect(await validator.validate({ name: 'longEnough' }, new Each([
+        new Collection({
+          name: new Length({ min: 4, max: 6 }),
+        }),
+      ]))).toEqual([{
+        by: '@modulify/validator/Length',
+        value: 'longEnough',
+        path: ['name'],
+        reason: 'max',
+        meta: 6,
+      }])
+    })
   })
 
   test('OneOf', async () => {

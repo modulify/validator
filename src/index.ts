@@ -8,6 +8,7 @@ import type {
 } from '../types'
 
 import Collection from '@/constraints/Collection'
+import Each from '@/constraints/Each'
 import Exists from '@/constraints/Exists'
 import Length from '@/constraints/Length'
 import OneOf from '@/constraints/OneOf'
@@ -40,9 +41,20 @@ const validateAsynchronously = async <Value> (
       continue
     }
 
+    if (c instanceof Each) {
+      if (Array.isArray(value)) {
+        value.forEach((value, index) => {
+          validations.push(validateAsynchronously(provider, value, c.constraints, [...path, index]))
+        })
+      } else {
+        validations.push(validateAsynchronously(provider, value, c.constraints, [...path]))
+      }
+      continue
+    }
+
     if (c instanceof Exists) {
       if (typeof value === 'undefined') {
-        validations.push(Promise.resolve([c.toViolation(value, path)]))
+        validations.push(Promise.resolve([c.toViolation(value, [...path])]))
         break
       }
       continue
@@ -53,7 +65,7 @@ const validateAsynchronously = async <Value> (
       throw new Error('No validator for constraint ' + c.name)
     }
 
-    const v = validator.validate(value, path)
+    const v = validator.validate(value, [...path])
     if (v) {
       if (v instanceof Promise) {
         validations.push(v.then(v => v ? [v] : []))
@@ -95,9 +107,20 @@ const validateSynchronously = <Value>(
       continue
     }
 
+    if (c instanceof Each) {
+      if (Array.isArray(value)) {
+        value.forEach((value, index) => {
+          violations.push(...validateSynchronously(provider, value, c.constraints, [...path, index]))
+        })
+      } else {
+        violations.push(...validateSynchronously(provider, value, c.constraints, [...path]))
+      }
+      continue
+    }
+
     if (c instanceof Exists) {
       if (typeof value === 'undefined') {
-        violations.push(c.toViolation(value, path))
+        violations.push(c.toViolation(value, [...path]))
         break
       }
       continue
@@ -108,7 +131,7 @@ const validateSynchronously = <Value>(
       throw new Error('No validator for constraint ' + c.name)
     }
 
-    const v = validator.validate(value, path)
+    const v = validator.validate(value, [...path])
     if (v) {
       if (v instanceof Promise) {
         throw new Error('Found asynchronous validator for constraint ' + c.name)
@@ -166,6 +189,7 @@ const createValidator = (
 
 export {
   Collection,
+  Each,
   Exists,
   Length,
   OneOf,

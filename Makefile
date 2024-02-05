@@ -35,6 +35,15 @@ else
 	$(YARN) test --coverage --coverageReporters=text
 endif
 
+.PHONY: release
+release: ## Bumps version and creates tag
+	$(TARGET_HEADER)
+ifdef as
+	$(YARN) release:$(as)
+else
+	$(YARN) release
+endif
+
 .PHONY: help
 help: ## Calls recipes list
 	@cat $(MAKEFILE_LIST) | grep -e "^[a-zA-Z_\-]*: *.*## *" | awk '\

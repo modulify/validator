@@ -90,7 +90,7 @@ describe('validates synchronously', () => {
   })
 
   describe('Each', () => {
-    test('checks entries in array', () => {
+    test('checks elements in array', () => {
       expect(validator.validate([
         { name: '' },
         { name: 'longEnough' },
@@ -206,7 +206,7 @@ describe('validates asynchronously', () => {
   })
 
   describe('Each', () => {
-    test('checks entries in array', async () => {
+    test('checks elements in array', async () => {
       expect(await validator.validate([
         { name: '' },
         { name: 'longEnough' },

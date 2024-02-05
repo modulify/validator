@@ -47,6 +47,11 @@
   "contributors": [
     "Zaitsev Kirill <zaytsev.cmath10@gmail.com>"
   ],
+  "homepage": "https://github.com/modulify/validator",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/modulify/validator.git"
+  },
   "husky": {
     "hooks": {
       "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"

@@ -12,7 +12,17 @@ be used to create a custom view for them.
 
 ## Installation
 
-No installation yet
+Using `yarn`:
+
+```
+yarn add @modulify/validator
+```
+
+or, using `npm`:
+
+```
+npm install @modulify/validator --save
+```
 
 ## Usage
 

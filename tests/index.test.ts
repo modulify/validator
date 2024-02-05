@@ -26,33 +26,67 @@ import {
 describe('validates synchronously', () => {
   const validator = createValidator()
 
-  test('Collection', () => {
-    expect(validator.validate({
-      form: {
-        nickname: '',
-        password: '',
-      },
-    }, new Collection({
-      form: [
-        new Exists(),
-        new Collection({
+  describe('Collection', () => {
+    test('checks object\'s structure', () => {
+      expect(validator.validate({
+        form: {
+          nickname: '',
+          password: '',
+        },
+      }, new Collection({
+        form: [
+          new Collection({
+            nickname: new Length({ min: 4 }),
+            password: new Length({ min: 6 }),
+          }),
+        ],
+      }), false)).toEqual([{
+        by: '@modulify/validator/Length',
+        value: '',
+        path: ['form', 'nickname'],
+        reason: 'min',
+        meta: 4,
+      }, {
+        by: '@modulify/validator/Length',
+        value: '',
+        path: ['form', 'password'],
+        reason: 'min',
+        meta: 6,
+      }])
+    })
+
+    test('doesn\'t check non-object values', () => {
+      expect(validator.validate('', new Collection<unknown>({
+        form: new Collection({
           nickname: new Length({ min: 4 }),
           password: new Length({ min: 6 }),
         }),
-      ],
-    }), false)).toEqual([{
-      by: '@modulify/validator/Length',
-      value: '',
-      path: ['form', 'nickname'],
-      reason: 'min',
-      meta: 4,
-    }, {
-      by: '@modulify/validator/Length',
-      value: '',
-      path: ['form', 'password'],
-      reason: 'min',
-      meta: 6,
-    }])
+      }), false)).toEqual([{
+        by: '@modulify/validator/Collection',
+        value: '',
+        path: [],
+        reason: 'unsupported',
+      }])
+    })
+  })
+
+  describe('Collection & Exists', () => {
+    test('checks object\'s structure', () => {
+      expect(validator.validate({}, new Collection<unknown>({
+        form: [
+          new Exists(),
+          new Collection({
+            nickname: new Length({ min: 4 }),
+            password: new Length({ min: 6 }),
+          }),
+        ],
+      }), false)).toEqual([{
+        by: '@modulify/validator/Exists',
+        value: undefined,
+        path: ['form'],
+        reason: 'undefined',
+      }])
+    })
   })
 
   describe('Each', () => {
@@ -107,33 +141,68 @@ describe('validates synchronously', () => {
 describe('validates asynchronously', () => {
   const validator = createValidator()
 
-  test('Collection', async () => {
-    expect(await validator.validate({
-      form: {
-        nickname: '',
-        password: '',
-      },
-    }, new Collection({
-      form: [
-        new Exists(),
-        new Collection({
+  describe('Collection', () => {
+    test('checks object\'s structure', async () => {
+      expect(await validator.validate({
+        form: {
+          nickname: '',
+          password: '',
+        },
+      }, new Collection({
+        form: [
+          new Exists(),
+          new Collection({
+            nickname: new Length({ min: 4 }),
+            password: new Length({ min: 6 }),
+          }),
+        ],
+      }))).toEqual([{
+        by: '@modulify/validator/Length',
+        value: '',
+        path: ['form', 'nickname'],
+        reason: 'min',
+        meta: 4,
+      }, {
+        by: '@modulify/validator/Length',
+        value: '',
+        path: ['form', 'password'],
+        reason: 'min',
+        meta: 6,
+      }])
+    })
+
+    test('doesn\'t check non-object values', async () => {
+      expect(await validator.validate('', new Collection<unknown>({
+        form: new Collection({
           nickname: new Length({ min: 4 }),
           password: new Length({ min: 6 }),
         }),
-      ],
-    }))).toEqual([{
-      by: '@modulify/validator/Length',
-      value: '',
-      path: ['form', 'nickname'],
-      reason: 'min',
-      meta: 4,
-    }, {
-      by: '@modulify/validator/Length',
-      value: '',
-      path: ['form', 'password'],
-      reason: 'min',
-      meta: 6,
-    }])
+      }))).toEqual([{
+        by: '@modulify/validator/Collection',
+        value: '',
+        path: [],
+        reason: 'unsupported',
+      }])
+    })
+  })
+
+  describe('Collection & Exists', () => {
+    test('checks object\'s structure', async () => {
+      expect(await validator.validate({}, new Collection<unknown>({
+        form: [
+          new Exists(),
+          new Collection({
+            nickname: new Length({ min: 4 }),
+            password: new Length({ min: 6 }),
+          }),
+        ],
+      }))).toEqual([{
+        by: '@modulify/validator/Exists',
+        value: undefined,
+        path: ['form'],
+        reason: 'undefined',
+      }])
+    })
   })
 
   describe('Each', () => {

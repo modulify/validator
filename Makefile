@@ -26,6 +26,15 @@ test: node_modules ## Runs autotests
 	$(TARGET_HEADER)
 	$(YARN) test
 
+.PHONY: test-coverage
+test-coverage: node_modules ## Runs autotests with --coverage
+	$(TARGET_HEADER)
+ifdef reporter
+	$(YARN) test --coverage --coverageReporters=$(reporter)
+else
+	$(YARN) test --coverage --coverageReporters=text
+endif
+
 .PHONY: help
 help: ## Calls recipes list
 	@cat $(MAKEFILE_LIST) | grep -e "^[a-zA-Z_\-]*: *.*## *" | awk '\

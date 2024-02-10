@@ -14,6 +14,7 @@
     "release:minor": "standard-version --release-as minor",
     "release:patch": "standard-version --release-as patch",
     "release:major": "standard-version --release-as major",
+    "stats": "gzip -c ./dist/index.mjs | wc -c",
     "test": "jest --config jest.config.ts",
     "test:coverage": "jest --config jest.config.ts --coverage --coverageReporters=lcov"
   },

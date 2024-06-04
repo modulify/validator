@@ -17,16 +17,13 @@ const input = path.join(__dirname, '/src/index.ts')
 const output: OutputOptions = {
   exports: 'named',
   dir: path.join(__dirname, '/dist'),
-  sourcemap: true,
   globals: {
     vue: 'Vue',
   },
 }
 
 const plugins: InputPluginOption = [
-  typescript({
-    sourceMap: true,
-  }),
+  typescript(),
 ]
 
 export default [{

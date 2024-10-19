@@ -18,11 +18,3 @@ export const flatten = <T>(recursive: Recursive<T>[]): T[] => {
 
   return flattened
 }
-
-const constructorOf = (value: object): unknown => {
-  return Object.getPrototypeOf(value).constructor
-}
-
-export const isRecord = (value: object): boolean => {
-  return constructorOf(value) === Object && Object.keys(Object.getPrototypeOf(value)).length === 0
-}

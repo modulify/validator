@@ -1,18 +1,18 @@
-export type Key = number | string | symbol
+export type Key = PropertyKey
 export type Recursive<T> = T | Recursive<T>[]
 
 export interface ConstraintViolation<Value = unknown, Meta = unknown> {
   by: string | symbol;
   value: Value;
   /** Path to a property, if a constraint is used as part of a `Collection` for checking some object's structure */
-  path?: Key[];
+  path?: PropertyKey[];
   reason?: string | symbol;
   meta?: Meta;
 }
 
 export interface Constraint<Value = unknown> {
   name: string;
-  toViolation (value: Value, path: Key[], reason?: string): ConstraintViolation<Value>
+  toViolation (value: Value, path: PropertyKey[], reason?: string): ConstraintViolation<Value>
 }
 
 export type ConstraintCollection<T> = {
@@ -23,7 +23,7 @@ export type ConstraintCollection<T> = {
  * Works only with a specific constraint
  */
 export interface ConstraintValidator<Value = unknown> {
-  validate (value: Value, path?: Key[]): ConstraintViolation<Value> | null | Promise<ConstraintViolation<Value> | null>;
+  validate (value: Value, path?: PropertyKey[]): ConstraintViolation<Value> | null | Promise<ConstraintViolation<Value> | null>;
 }
 
 /**
@@ -43,7 +43,7 @@ export type FunctionalValidator = <Value, Asynchronously extends boolean = true>
   provider: Provider,
   value: Value,
   constraints: Constraint<Value> | Constraint<Value>[],
-  path?: Key[],
+  path?: PropertyKey[],
   asynchronously?: Asynchronously
 ) => MaybePromise<ConstraintViolation[], Asynchronously>
 
@@ -63,7 +63,7 @@ export declare class Collection<T = Record<string, unknown>> implements Constrai
 
   constructor (constraints: ConstraintCollection<T>);
 
-  toViolation (value: T, path: Key[], reason: string): ConstraintViolation<T>;
+  toViolation (value: T, path: PropertyKey[], reason: string): ConstraintViolation<T>;
 }
 
 /**
@@ -72,7 +72,7 @@ export declare class Collection<T = Record<string, unknown>> implements Constrai
 export declare class Exists implements Constraint {
   public readonly name = '@modulify/validator/Exists'
 
-  toViolation (value: unknown, path: Key[]): ConstraintViolation;
+  toViolation (value: unknown, path: PropertyKey[]): ConstraintViolation;
 }
 
 export declare class Length<Value = unknown> implements Constraint<Value> {
@@ -90,7 +90,7 @@ export declare class Length<Value = unknown> implements Constraint<Value> {
 
   toViolation (
     value: Value,
-    path: Key[],
+    path: PropertyKey[],
     reason: 'exact' | 'max' | 'min' | 'unsupported'
   ): ConstraintViolation<Value, number>;
 }
@@ -111,7 +111,7 @@ export declare class OneOf<Expected = unknown, Actual = unknown> implements Cons
     equalTo?: EqualPredicate<Expected>
   );
 
-  toViolation (value: Actual, path: Key[]): ConstraintViolation<Actual>;
+  toViolation (value: Actual, path: PropertyKey[]): ConstraintViolation<Actual>;
 }
 
 export declare class ProviderChain implements Provider {

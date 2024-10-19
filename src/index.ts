@@ -1,7 +1,6 @@
 import type {
   Constraint,
   ConstraintViolation,
-  Key,
   Provider,
   Recursive,
   Validator,
@@ -18,14 +17,16 @@ import ProviderChain from '@/provider'
 import {
   arraify,
   flatten,
-  isRecord,
 } from '@/utils'
+
+import isArray from '@/predicates/isArray'
+import isRecord from '@/predicates/isRecord'
 
 const validateAsynchronously = async <Value> (
   provider: Provider,
   value: Value,
   constraints: Constraint<Value> | Constraint<Value>[],
-  path: Key[] = []
+  path: PropertyKey[] = []
 ): Promise<ConstraintViolation[]> => {
   const validations: Promise<ConstraintViolation[]>[] = []
 
@@ -42,7 +43,7 @@ const validateAsynchronously = async <Value> (
     }
 
     if (c instanceof Each) {
-      if (Array.isArray(value)) {
+      if (isArray(value)) {
         value.forEach((value, index) => {
           validations.push(validateAsynchronously(provider, value, c.constraints, [...path, index]))
         })
@@ -91,7 +92,7 @@ const validateSynchronously = <Value>(
   provider: Provider,
   value: Value,
   constraints: Constraint<Value> | Constraint<Value>[],
-  path: Key[] = []
+  path: PropertyKey[] = []
 ): ConstraintViolation[] => {
   const violations: Recursive<ConstraintViolation>[] = []
 
@@ -108,7 +109,7 @@ const validateSynchronously = <Value>(
     }
 
     if (c instanceof Each) {
-      if (Array.isArray(value)) {
+      if (isArray(value)) {
         value.forEach((value, index) => {
           violations.push(...validateSynchronously(provider, value, c.constraints, [...path, index]))
         })
@@ -149,7 +150,7 @@ const validate = <Value, Asynchronously extends boolean = true>(
   provider: Provider,
   value: Value,
   constraints: Constraint<Value> | Constraint<Value>[],
-  path: Key[] = [],
+  path: PropertyKey[] = [],
   asynchronously: Asynchronously = true as Asynchronously
 ): MaybePromise<ConstraintViolation[], Asynchronously> => {
   return asynchronously

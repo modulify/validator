@@ -23,6 +23,8 @@ import {
   createValidator,
 } from '@/index'
 
+import isEmail from '@/predicates/isEmail'
+
 describe('validates synchronously', () => {
   const validator = createValidator()
 
@@ -277,7 +279,7 @@ describe('override', () => {
     }
 
     validate (value: unknown, path?: Key[]): ConstraintViolation | null {
-      if (!(typeof value === 'string') || !/\S+@\S+\.\S+/.test(value)) {
+      if (!isEmail(value)) {
         return this._constraint.toViolation(value, path)
       }
 
@@ -293,7 +295,7 @@ describe('override', () => {
     }
 
     validate (value: unknown, path?: Key[]): Promise<ConstraintViolation | null> {
-      if (!(typeof value === 'string') || !/\S+@\S+\.\S+/.test(value)) {
+      if (!isEmail(value)) {
         return Promise.resolve(this._constraint.toViolation(value, path))
       }
 

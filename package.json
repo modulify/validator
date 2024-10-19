@@ -15,8 +15,8 @@
     "release:patch": "standard-version --release-as patch",
     "release:major": "standard-version --release-as major",
     "stats": "gzip -c ./dist/index.mjs | wc -c",
-    "test": "vitest --run",
-    "test:coverage": "vitest --run --coverage --coverageReporters=lcov"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.7.1",
@@ -25,6 +25,7 @@
     "@rollup/plugin-alias": "^5.1.0",
     "@rollup/plugin-typescript": "^11.1.6",
     "@types/node": "^18.15 || ^20.11",
+    "@vitest/coverage-istanbul": "2.1.3",
     "eslint": "^9.13.0",
     "globals": "^15.11.0",
     "husky": "^9.0.10",

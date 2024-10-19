@@ -2,7 +2,7 @@ import {
   describe,
   expect,
   test,
-} from '@jest/globals'
+} from 'vitest'
 
 import OneOf from '@/constraints/OneOf'
 import OneOfValidator from '@/validators/OneOfValidator'

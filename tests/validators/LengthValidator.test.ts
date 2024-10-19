@@ -2,7 +2,7 @@ import {
   describe,
   expect,
   test,
-} from '@jest/globals'
+} from 'vitest'
 
 import Length from '@/constraints/Length'
 import LengthValidator from '@/validators/LengthValidator'

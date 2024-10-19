@@ -10,7 +10,7 @@ import {
   describe,
   expect,
   test,
-} from '@jest/globals'
+} from 'vitest'
 
 import Collection from '@/constraints/Collection'
 import Each from '@/constraints/Each'

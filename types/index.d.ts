@@ -125,6 +125,6 @@ export declare class ProviderChain implements Provider {
   override (provider: Provider): Provider;
 }
 
-export declare const createValidator: (provider?: Provider | null) => Validator;
+export declare const createValidator: (provider?: Provider | null) => Validator
 
-export declare const validate: FunctionalValidator;
+export declare const validate: FunctionalValidator

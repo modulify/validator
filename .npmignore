@@ -2,19 +2,21 @@
 .husky
 .idea
 coverage
-/node_modules
+node_modules
 src
 tests
 
 .commitlintrc.json
-.eslintrc.js
 .gitignore
 .npmrc
 .versionrc.json
+codecov.yml
 docker-compose.yml
-jest.config.ts
-rollup.config.ts
+eslint.config.mjs
 tsconfig.json
+vite.config.basic.ts
+vite.config.ts
+vitest.config.ts
 yarn.lock
 
 Makefile

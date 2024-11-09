@@ -4,9 +4,9 @@
 [![Tests Status](https://github.com/modulify/validator/actions/workflows/tests.yml/badge.svg)](https://github.com/modulify/validator/actions)
 [![npm version](https://badge.fury.io/js/%40modulify%2Fvalidator.svg)](https://www.npmjs.com/package/@modulify/validator)
 
-This library provides a declarative validation util.
+This library provides a declarative validation utility.
 
-The util does not provide any text messages in the constraints produced and gives only metadata that can
+The utility does not include text messages in the generated violations but instead provides metadata that can
 be used to create a custom view for them.
 
 ## Installation
@@ -27,35 +27,34 @@ npm install @modulify/validator --save
 
 ```typescript
 import {
-  Collection,
-  Exists,
-  Length,
-  createValidator,
+  HasLength,
+  HasProperties,
+  IsDefined,
+  IsString,
+  validate,
 } from '@modulify/validator'
 
-const validator = createValidator()
-
-const violations = validator.validate({
+const violations = await validate({
   form: {
     nickname: '',
     password: '',
   },
-}, new Collection({
+}, HasProperties({
   form: [
-    new Exists(),
-    new Collection({
-      nickname: new Length({ min: 4 }),
-      password: new Length({ min: 6 }),
+    IsDefined(),
+    HasProperties({
+      nickname: IsString.That(HasLength({ min: 4 })),
+      password: IsString.That(HasLength({ min: 6 })),
     }),
   ],
-}), /* do not set or set to true for async validation */ false) /* [{
-  by: '@modulify/validator/Length',
+})) /* [{
+  by: '@modulify/validator/IsString',
   value: '',
   path: ['form', 'nickname'],
   reason: 'min',
   meta: 4,
 }, {
-  by: '@modulify/validator/Length',
+  by: '@modulify/validator/IsString',
   value: '',
   path: ['form', 'password'],
   reason: 'min',
@@ -63,124 +62,90 @@ const violations = validator.validate({
 }] */
 ```
 
-### Constraints
-
-Constraints provide information of how the value should be validated.
-
-Available from the box:
-
-* `Collection` &ndash; used for validating objects' structure;
-* `Each` &ndash; used for validating arrays' elements; applies specified constraints to each element of an array;
-* `Exists` &ndash; used for checking if a value is defined; useful for finding missing keys;
-* `Length` &ndash; used for checking arrays' and string's length, available settings (all optional) are:
-  * `exact` &ndash; `number`, array or string should have exactly specified count of elements or characters;
-  * `max` &ndash; `number`, maximum elements in array or maximum characters in string;
-  * `min` &ndash; `number`, minimum elements in array or minimum characters in string;
-* `OneOf` &ndash; used for restricting which values can be used.
-
-There is no any basic constraint class to extend, but they should follow signature
-described in `types/index.d.ts` &ndash; `Constraint`.
-
-### Validators
-
-Validators provide validation logic that relies on information provided by constraints.
-
-There is no any basic validator class to extend, but they should follow signature
-described in `types/index.d.ts` &ndash; `ConstraintValidator`.
-
-### Provider
-
-Provider is used to bind constraints with their validators, provides a validator for a constraint.
-
-All providers should follow signature described in `types/index.d.ts` &ndash; `Provider`.
-
-This feature is responsible for extending validation capabilities. Custom provider can be passed into
-`createValidator` function or `override` method of `Validator` instance.
-
-There is a built-in provider &ndash; `ProviderChain`. It allows to "chain" providers &ndash; if
-suitable validator was not found in currently used provider, it will try to find it in previous provider that was
-overridden by `override` method.
+or (for synchronous validation):
 
 ```typescript
-import type {
-  Constraint,
-  ConstraintValidator,
-  ConstraintViolation,
-  Key,
-  Provider,
-} from '@modulify/validator'
-
-import {
-  ProviderChain,
-  createValidator,
-} from '@modulify/validator'
-
-class Email implements Constraint {
-  public readonly name = '@app/validator/Email'
-
-  toViolation (value: unknown, path: Key[]): ConstraintViolation {
-    return {
-      by: this.name,
-      value,
-      path,
-    }
-  }
-}
-
-class EmailValidator implements ConstraintValidator {
-  private readonly _constraint: Email
-
-  constructor (constraint: Email) {
-    this._constraint = constraint
-  }
-
-  validate (value: unknown, path?: Key[]): ConstraintViolation | null {
-    if (!(typeof value === 'string') || !/\S+@\S+\.\S+/.test(value)) {
-      return this._constraint.toViolation(value, path)
-    }
-
-    return null
-  }
-}
+const violations = validate.sync({
+  form: {
+    nickname: '',
+    password: '',
+  },
+}, HasProperties({
+  form: [
+    IsDefined(),
+    HasProperties({
+      nickname: IsString.That(HasLength({ min: 4 })),
+      password: IsString.That(HasLength({ min: 6 })),
+    }),
+  ],
+}))
 ```
 
-then
+## Exported types
 
-```typescript
-const provider = new ProviderChain(new class implements Provider {
-  get (constraint: Constraint) {
-    return constraint instanceof Email ? new EmailValidator(constraint) : null
-  }
+* `Violation` – an object that contains information about a value – why it violates one or more constraints;
+  includes following fields:
+  * `value` – value that violates something;
+  * `path` – path to the value, an empty array for scalar values and represents full path to the value in a complex
+    object;
+  * `violates` – indicator of the violated constraint;
+  * `reason` – indicator of the reason why the constraint is violated;
+  * `meta` – some data to describe the reason – what exactly the boundaries were not met;
+  ```typescript
+  import type { Violation } from '@modulify/validator/types'
+  ```
+* `Predicate` – function that accepts a value and returns `true` or `false`; logical unit that is used for checking
+  multiple things: type or if the value satisfies certain criteria; accepts generic argument `T` to specify
+  the type of the value, if predicate returns `true`;
+  ```typescript
+  import type { Predicate } from '@modulify/validator/types'
+  ```
+* `Assertion` – extension of the `Predicate` type that includes:
+  * `fqn` – field – some predefined name that will be used as a value for the `violates` field of `Violation`;
+  * `bail` – field – flag that interrupts further validation if the assertion fails;
+  * `reason` – field, optional – string or symbol that is used to indicate, why assertion has failed;
+    always added to a violation object, if present;
+  * `meta` – field, optional – some metadata to use in further analysis; always added to a violation object, if present;
+  * `That` – method – used to extend assertion with other assertions;
+  * `also` – field – readonly array of other assertions that was attached by `That` method;
+  ```typescript
+  import type { Assertion } from '@modulify/validator/types'
+  ```
 
-  override (provider: Provider): Provider {
-    return new ProviderChain(provider, this)
-  }
-})
-```
+## Exported members
 
-or
+* `validate` – function that accepts a value for validation as the first argument, constraints as the second,
+  and path to a value as the third (that is optional and used mostly for internal purposes, as validation is recursive);
+  includes method `sync` that has the same arguments set but performs validation synchronously and throws error when
+  finds an asynchronous constraint;
 
-```typescript
-const provider = new class implements Provider {
-  get (constraint: Constraint) {
-    return constraint instanceof Email ? new EmailValidator(constraint) : null
-  }
+* `Assert` – creates assertion from logical predicate:
+  ```typescript
+  const IsSomething = Assert(isSomething, {
+    fqn: 'Some fqn',
+    bail: true,
+  })
+  ```
+  Arguments:
+  * Logical predicate
+  * Options, that includes `fqn`, `bail`, `reason` (optional), and `meta` (optional);
+* `HasLength` – checks length property of the specified string or array; can be configured with options:
+  * `exact` – if the length should be exactly equal the specified value;
+  * `max` – if the length should be equal or less than the specified value;
+  * `min` – if the length should be equal or greater than the specified value;
+  * `bail` – set this to true if you need to interrupt further validation if the assertion fails;
+* `IsBoolean` – checks if the value is **boolean**; interrupts further validation if fails;
+* `IsDate` – checks if the value is Date **object**; interrupts further validation if fails;
+* `IsDefined` – checks if the value is **not undefined**; interrupts further validation if fails;
+* `IsEmail` – checks if the value is a **valid email**; interrupts further validation if fails;
+* `IsNull` – checks if the value is **null**; interrupts further validation if fails;
+* `IsNumber` – checks if the value is **number**; interrupts further validation if fails;
+* `IsString` – checks if the value is **string**; interrupts further validation if fails;
+* `IsSymbol` – checks if the value is a **symbol**; interrupts further validation if fails;
+* `OneOf` – checks if the value equal to one of the specified values; can be configured with:
+  * `equalTo` – predicate f(a, b) that checks if two values are equal or not;
+  by default the strict `===` comparison is used
+  * `bail` – set this to true if you need to interrupt further validation if the assertion fails;
 
-  override (provider: Provider): Provider {
-    return new ProviderChain(provider, this)
-  }
-}
-```
-
-and then
-
-```typescript
-const validator = createValidator(provider)
-```
-
-or
-
-```typescript
-const validator = createValidator()
-const overridden = validator.override(provider) // it creates new validator instance, so validator !== overridden
-```
+* `Each` – a runner that runs validation for each element in array;
+* `HasProperties` – a runner that runs object's structure check.

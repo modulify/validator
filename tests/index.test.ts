@@ -1,207 +1,117 @@
 import {
-  Constraint,
-  ConstraintValidator,
-  ConstraintViolation,
-  Key,
-  Provider,
-} from '../types'
-
-import {
   describe,
   expect,
   test,
 } from 'vitest'
 
-import Collection from '@/constraints/Collection'
-import Each from '@/constraints/Each'
-import Exists from '@/constraints/Exists'
-import Length from '@/constraints/Length'
-import OneOf from '@/constraints/OneOf'
+import {
+  Each,
+  HasProperties,
+} from '@/runners'
 
 import {
-  ProviderChain,
-  createValidator,
-} from '@/index'
+  HasLength,
+  IsDefined,
+  IsString,
+  OneOf,
+} from '@/assertions'
 
-import isEmail from '@/predicates/isEmail'
+import { validate } from '@/index'
 
-describe('validates synchronously', () => {
-  const validator = createValidator()
+describe('validate', () => {
+  describe('HasProperties', () => {
+    test('checks object\'s structure', async () => {
+      const constraint = HasProperties({
+        form: [
+          IsDefined,
+          HasProperties({
+            nickname: IsString.That(HasLength({ min: 4 })),
+            password: IsString.That(HasLength({ min: 6 })),
+          }),
+        ],
+      })
 
-  describe('Collection', () => {
-    test('checks object\'s structure', () => {
-      expect(validator.validate({
+      expect(await validate({
         form: {
-          nickname: '',
-          password: '',
+          nickname: 'none',
+          password: 'qwerty',
         },
-      }, new Collection({
-        form: [
-          new Collection({
-            nickname: new Length({ min: 4 }),
-            password: new Length({ min: 6 }),
-          }),
-        ],
-      }), false)).toEqual([{
-        by: '@modulify/validator/Length',
-        value: '',
-        path: ['form', 'nickname'],
-        reason: 'min',
-        meta: 4,
-      }, {
-        by: '@modulify/validator/Length',
-        value: '',
-        path: ['form', 'password'],
-        reason: 'min',
-        meta: 6,
-      }])
-    })
+      }, constraint)).toEqual([])
 
-    test('doesn\'t check non-object values', () => {
-      expect(validator.validate('', new Collection<unknown>({
-        form: new Collection({
-          nickname: new Length({ min: 4 }),
-          password: new Length({ min: 6 }),
-        }),
-      }), false)).toEqual([{
-        by: '@modulify/validator/Collection',
-        value: '',
-        path: [],
-        reason: 'unsupported',
-      }])
-    })
-  })
-
-  describe('Collection & Exists', () => {
-    test('checks object\'s structure', () => {
-      expect(validator.validate({}, new Collection<unknown>({
-        form: [
-          new Exists(),
-          new Collection({
-            nickname: new Length({ min: 4 }),
-            password: new Length({ min: 6 }),
-          }),
-        ],
-      }), false)).toEqual([{
-        by: '@modulify/validator/Exists',
+      expect(await validate({}, constraint)).toEqual([{
         value: undefined,
         path: ['form'],
+        violates: '@modulify/validator/IsDefined',
         reason: 'undefined',
       }])
-    })
-  })
 
-  describe('Each', () => {
-    test('checks elements in array', () => {
-      expect(validator.validate([
-        { name: '' },
-        { name: 'longEnough' },
-      ], new Each([
-        new Collection({
-          name: new Length({ min: 4, max: 6 }),
-        }),
-      ]), false)).toEqual([{
-        by: '@modulify/validator/Length',
-        value: '',
-        path: [0, 'name'],
-        reason: 'min',
-        meta: 4,
-      }, {
-        by: '@modulify/validator/Length',
-        value: 'longEnough',
-        path: [1, 'name'],
-        reason: 'max',
-        meta: 6,
-      }])
-    })
-
-    test('checks single value', () => {
-      expect(validator.validate({ name: 'longEnough' }, new Each([
-        new Collection({
-          name: new Length({ min: 4, max: 6 }),
-        }),
-      ]), false)).toEqual([{
-        by: '@modulify/validator/Length',
-        value: 'longEnough',
-        path: ['name'],
-        reason: 'max',
-        meta: 6,
-      }])
-    })
-  })
-
-  test('OneOf', () => {
-    expect(validator.validate('', new OneOf(['filled', 'outline', 'tonal']), false)).toEqual([{
-      by: '@modulify/validator/OneOf',
-      value: '',
-      path: [],
-      meta: ['filled', 'outline', 'tonal'],
-    }])
-  })
-})
-
-describe('validates asynchronously', () => {
-  const validator = createValidator()
-
-  describe('Collection', () => {
-    test('checks object\'s structure', async () => {
-      expect(await validator.validate({
+      expect(await validate({
         form: {
           nickname: '',
           password: '',
         },
-      }, new Collection({
-        form: [
-          new Exists(),
-          new Collection({
-            nickname: new Length({ min: 4 }),
-            password: new Length({ min: 6 }),
-          }),
-        ],
-      }))).toEqual([{
-        by: '@modulify/validator/Length',
+      }, constraint)).toEqual([{
         value: '',
         path: ['form', 'nickname'],
+        violates: '@modulify/validator/IsString',
         reason: 'min',
         meta: 4,
       }, {
-        by: '@modulify/validator/Length',
         value: '',
         path: ['form', 'password'],
+        violates: '@modulify/validator/IsString',
         reason: 'min',
         meta: 6,
       }])
+
+      expect(await validate({
+        nickname: 'none',
+        password: 'qwerty',
+      }, [
+        Object.assign(async (value: unknown, path: PropertyKey[] = []) => {
+          if (IsDefined(value)) return null
+
+          return { value, path, violates: IsDefined.fqn }
+        }, {
+          fqn: IsDefined.fqn,
+          bail: false,
+        }),
+        HasProperties({
+          nickname: IsString.That(HasLength({ min: 4 })),
+          password: IsString.That(HasLength({ min: 6 })),
+        }),
+      ])).toEqual([])
     })
 
     test('doesn\'t check non-object values', async () => {
-      expect(await validator.validate('', new Collection<unknown>({
-        form: new Collection({
-          nickname: new Length({ min: 4 }),
-          password: new Length({ min: 6 }),
+      expect(await validate('', HasProperties({
+        form: HasProperties({
+          nickname: IsString.That(HasLength({ min: 4 })),
+          password: IsString.That(HasLength({ min: 6 })),
         }),
       }))).toEqual([{
-        by: '@modulify/validator/Collection',
         value: '',
         path: [],
+        violates: '@modulify/validator/HasProperties',
         reason: 'unsupported',
       }])
     })
   })
 
-  describe('Collection & Exists', () => {
+  describe('HasProperties & IsDefined', () => {
     test('checks object\'s structure', async () => {
-      expect(await validator.validate({}, new Collection<unknown>({
+      expect(await validate({}, HasProperties({
         form: [
-          new Exists(),
-          new Collection({
-            nickname: new Length({ min: 4 }),
-            password: new Length({ min: 6 }),
+          IsDefined,
+          HasProperties({
+            nickname: IsString.That(HasLength({ min: 4 })),
+            password: IsString.That(HasLength({ min: 6 })),
           }),
         ],
       }))).toEqual([{
-        by: '@modulify/validator/Exists',
         value: undefined,
         path: ['form'],
+        violates: '@modulify/validator/IsDefined',
         reason: 'undefined',
       }])
     })
@@ -209,37 +119,37 @@ describe('validates asynchronously', () => {
 
   describe('Each', () => {
     test('checks elements in array', async () => {
-      expect(await validator.validate([
+      expect(await validate([
         { name: '' },
-        { name: 'longEnough' },
-      ], new Each([
-        new Collection({
-          name: new Length({ min: 4, max: 6 }),
+        { name: 'tooLong' },
+      ], Each([
+        HasProperties({
+          name: IsString.That(HasLength({ min: 4, max: 6 })),
         }),
       ]))).toEqual([{
-        by: '@modulify/validator/Length',
         value: '',
         path: [0, 'name'],
+        violates: '@modulify/validator/IsString',
         reason: 'min',
         meta: 4,
       }, {
-        by: '@modulify/validator/Length',
-        value: 'longEnough',
+        value: 'tooLong',
         path: [1, 'name'],
+        violates: '@modulify/validator/IsString',
         reason: 'max',
         meta: 6,
       }])
     })
 
     test('checks single value', async () => {
-      expect(await validator.validate({ name: 'longEnough' }, new Each([
-        new Collection({
-          name: new Length({ min: 4, max: 6 }),
+      expect(await validate({ name: 'tooLong' }, Each([
+        HasProperties({
+          name: IsString.That(HasLength({ min: 4, max: 6 })),
         }),
       ]))).toEqual([{
-        by: '@modulify/validator/Length',
-        value: 'longEnough',
+        value: 'tooLong',
         path: ['name'],
+        violates: '@modulify/validator/IsString',
         reason: 'max',
         meta: 6,
       }])
@@ -247,112 +157,230 @@ describe('validates asynchronously', () => {
   })
 
   test('OneOf', async () => {
-    expect(await validator.validate('', new OneOf(['filled', 'outline', 'tonal']))).toEqual([{
-      by: '@modulify/validator/OneOf',
+    expect(await validate('', OneOf(['filled', 'outline', 'tonal']))).toEqual([{
       value: '',
       path: [],
+      violates: '@modulify/validator/OneOf',
       meta: ['filled', 'outline', 'tonal'],
+    }])
+  })
+
+  test('skips the rest constraints if the current one with bail flag fails', async () => {
+    const _IsDefined = ({ bail }: { bail: boolean }) => {
+      const fqn = '_IsDefined.bail=' + JSON.stringify(bail)
+
+      return Object.assign(async (value: unknown, path: PropertyKey[] = []) => {
+        if (IsDefined(value)) return null
+
+        return { value, path, violates: fqn }
+      }, { fqn, bail })
+    }
+
+    expect(await validate({
+      form: {
+        nickname: 'none',
+        password: 'qwerty',
+      },
+    }, HasProperties({
+      form: [
+        _IsDefined({ bail: true }),
+        HasProperties({
+          nickname: IsString.That(HasLength({ min: 4 })),
+          password: IsString.That(HasLength({ min: 6 })),
+        }),
+      ],
+    }))).toEqual([])
+
+    expect(await validate({}, HasProperties({
+      form: [
+        _IsDefined({ bail: true }),
+        HasProperties({
+          nickname: IsString.That(HasLength({ min: 4 })),
+          password: IsString.That(HasLength({ min: 6 })),
+        }),
+      ],
+    }))).toEqual([{
+      value: undefined,
+      path: ['form'],
+      violates: '_IsDefined.bail=true',
+    }])
+
+    expect(await validate({}, HasProperties({
+      form: [
+        _IsDefined({ bail: false }),
+        HasProperties({
+          nickname: IsString.That(HasLength({ min: 4 })),
+          password: IsString.That(HasLength({ min: 6 })),
+        }),
+      ],
+    }))).toEqual([{
+      value: undefined,
+      path: ['form'],
+      violates: '_IsDefined.bail=false',
+    }, {
+      value: undefined,
+      path: ['form'],
+      violates: '@modulify/validator/HasProperties',
+      reason: 'unsupported',
+    }])
+  })
+
+  test('returns special violation for rejected async validator', async () => {
+    expect(await validate('', Object.assign(async () => Promise.reject('test rejection'), {
+      fqn: 'This should not appear in the result',
+      bail: false,
+    }))).toEqual([{
+      value: '',
+      path: [],
+      violates: '@modulify/validator',
+      reason: 'reject',
+      meta: 'test rejection',
     }])
   })
 })
 
-describe('override', () => {
-  const validator = createValidator()
+describe('validate.sync', () => {
+  describe('HasProperties', () => {
+    test('checks object\'s structure', () => {
+      const constraint = HasProperties({
+        form: [
+          IsDefined,
+          HasProperties({
+            nickname: IsString.That(HasLength({ min: 4 })),
+            password: IsString.That(HasLength({ min: 6 })),
+          }),
+        ],
+      })
 
-  class Email implements Constraint {
-    public readonly name = '@app/validator/Email'
+      expect(validate.sync({
+        form: {
+          nickname: 'none',
+          password: 'qwerty',
+        },
+      }, constraint)).toEqual([])
 
-    toViolation (value: unknown, path: Key[]): ConstraintViolation {
+      expect(validate.sync({}, constraint)).toEqual([{
+        value: undefined,
+        path: ['form'],
+        violates: '@modulify/validator/IsDefined',
+        reason: 'undefined',
+      }])
+
+      expect(validate.sync({
+        form: {
+          nickname: '',
+          password: '',
+        },
+      }, constraint)).toEqual([{
+        value: '',
+        path: ['form', 'nickname'],
+        violates: '@modulify/validator/IsString',
+        reason: 'min',
+        meta: 4,
+      }, {
+        value: '',
+        path: ['form', 'password'],
+        violates: '@modulify/validator/IsString',
+        reason: 'min',
+        meta: 6,
+      }])
+    })
+
+    test('doesn\'t check non-object values', () => {
+      expect(validate.sync('', HasProperties({
+        form: HasProperties({
+          nickname: IsString.That(HasLength({ min: 4 })),
+          password: IsString.That(HasLength({ min: 6 })),
+        }),
+      }))).toEqual([{
+        value: '',
+        path: [],
+        violates: '@modulify/validator/HasProperties',
+        reason: 'unsupported',
+      }])
+    })
+  })
+
+  describe('HasProperties & IsDefined', () => {
+    test('checks object\'s structure', () => {
+      expect(validate.sync({}, HasProperties({
+        form: [
+          IsDefined,
+          HasProperties({
+            nickname: IsString.That(HasLength({ min: 4 })),
+            password: IsString.That(HasLength({ min: 6 })),
+          }),
+        ],
+      }))).toEqual([{
+        value: undefined,
+        path: ['form'],
+        violates: '@modulify/validator/IsDefined',
+        reason: 'undefined',
+      }])
+    })
+  })
+
+  describe('Each', () => {
+    test('checks elements in array', () => {
+      expect(validate.sync([
+        { name: '' },
+        { name: 'tooLong' },
+      ], Each([
+        HasProperties({
+          name: IsString.That(HasLength({ min: 4, max: 6 })),
+        }),
+      ]))).toEqual([{
+        value: '',
+        path: [0, 'name'],
+        violates: '@modulify/validator/IsString',
+        reason: 'min',
+        meta: 4,
+      }, {
+        value: 'tooLong',
+        path: [1, 'name'],
+        violates: '@modulify/validator/IsString',
+        reason: 'max',
+        meta: 6,
+      }])
+    })
+
+    test('checks single value', () => {
+      expect(validate.sync({ name: 'tooLong' }, Each([
+        HasProperties({
+          name: IsString.That(HasLength({ min: 4, max: 6 })),
+        }),
+      ]))).toEqual([{
+        value: 'tooLong',
+        path: ['name'],
+        violates: '@modulify/validator/IsString',
+        reason: 'max',
+        meta: 6,
+      }])
+    })
+  })
+
+  test('OneOf', () => {
+    expect(validate.sync('', OneOf(['filled', 'outline', 'tonal']))).toEqual([{
+      value: '',
+      path: [],
+      violates: '@modulify/validator/OneOf',
+      meta: ['filled', 'outline', 'tonal'],
+    }])
+  })
+
+  test('throws error if found async validator', () => {
+    const validator = Object.assign(async (value: unknown) => {
       return {
-        by: this.name,
         value,
-        path,
+        violates: '__async__',
       }
-    }
-  }
+    }, {
+      fqn: '__async__',
+      bail: false,
+    })
 
-  class EmailValidator implements ConstraintValidator {
-    private readonly _constraint: Email
-
-    constructor (constraint: Email) {
-      this._constraint = constraint
-    }
-
-    validate (value: unknown, path?: Key[]): ConstraintViolation | null {
-      if (!isEmail(value)) {
-        return this._constraint.toViolation(value, path)
-      }
-
-      return null
-    }
-  }
-
-  class AsyncEmailValidator implements ConstraintValidator {
-    private readonly _constraint: Email
-
-    constructor (constraint: Email) {
-      this._constraint = constraint
-    }
-
-    validate (value: unknown, path?: Key[]): Promise<ConstraintViolation | null> {
-      if (!isEmail(value)) {
-        return Promise.resolve(this._constraint.toViolation(value, path))
-      }
-
-      return Promise.resolve(null)
-    }
-  }
-
-  test('fails if some rules are unknown', () => {
     expect(() => {
-      validator.validate('my@test.test', new Email(), false)
-    }).toThrow('No validator for constraint @app/validator/Email')
-  })
-
-  test('uses new rules', () => {
-    const overridden = validator.override(new class implements Provider {
-      get (constraint: Constraint) {
-        return constraint instanceof Email ? new EmailValidator(constraint) : null
-      }
-
-      override (provider: Provider): Provider {
-        return new ProviderChain(provider, this)
-      }
-    })
-
-    expect(overridden.validate('my@test.test', new Email(), false)).toEqual([])
-
-    expect(overridden.validate(
-      { email: 'not-email' },
-      new Collection({ email: new Email() }),
-      false
-    )).toEqual([{
-      by: '@app/validator/Email',
-      value: 'not-email',
-      path: ['email'],
-    }])
-  })
-
-  test('uses new asynchronous rules', async () => {
-    const overridden = validator.override(new class implements Provider {
-      get (constraint: Constraint) {
-        return constraint instanceof Email ? new AsyncEmailValidator(constraint) : null
-      }
-
-      override (provider: Provider): Provider {
-        return new ProviderChain(provider, this)
-      }
-    })
-
-    expect(await overridden.validate('my@test.test', new Email())).toEqual([])
-
-    expect(await overridden.validate(
-      { email: 'not-email' },
-      new Collection({ email: new Email() })
-    )).toEqual([{
-      by: '@app/validator/Email',
-      value: 'not-email',
-      path: ['email'],
-    }])
+      validate.sync('', validator)
+    }).toThrowError('Found asynchronous constraint validator __async__')
   })
 })

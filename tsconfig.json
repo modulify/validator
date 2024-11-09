@@ -1,12 +1,15 @@
 {
   "compilerOptions": {
     "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "node",
+    "module": "ESNext",
+    "moduleResolution": "Node",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "~types": ["./types/index.d.ts"],
+      "~types/*": ["./types"]
     },
-    "target": "es6"
+    "resolveJsonModule": true,
+    "target": "ES2017"
   },
   "include": [
     "src/**/*.ts",

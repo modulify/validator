@@ -29,11 +29,7 @@ test: node_modules ## Runs autotests
 .PHONY: test-coverage
 test-coverage: node_modules ## Runs autotests with --coverage
 	$(TARGET_HEADER)
-ifdef reporter
-	$(YARN) test --coverage --coverageReporters=$(reporter)
-else
-	$(YARN) test --coverage --coverageReporters=text
-endif
+	$(YARN) test:coverage
 
 .PHONY: release
 release: ## Bumps version and creates tag

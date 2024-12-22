@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.1.0](https://github.com/modulify/validator/compare/v0.0.2...v0.1.0) (2024-12-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* validator object replaced with validate function, containing sub method sync for synchronous validation
+* Length constraint replaced with HasLength functional assertion
+* Exists constraint replaced with IsDefined functional assertion
+* Each object replaced with Each runner
+* Collection object replaced with HasProperties runner
+* Type "Key" replaced with in-box "PropertyKey"
+* ConstraintCollection type was removed
+* ConstraintValidator was renamed to Validator
+* ConstraintViolation was renamed to Violation
+* d.ts files for exported logic units are now generated and available in dist catalogue
+
+### Features
+
+* Logic redesign and simplification ([b829a1e](https://github.com/modulify/validator/commit/b829a1eb0373cc6069451eb1cdf4767accbe2ee3))
+
+
+### Fixes
+
+* Removed sourcemap ([7e469d0](https://github.com/modulify/validator/commit/7e469d0ca60d854c62a79c54e9b3dba1d3b72657))
+* test coverage ([84912c4](https://github.com/modulify/validator/commit/84912c4a33d58b385a1e0c764c57b3806d658613))
+
 ### [0.0.2](https://github.com/modulify/validator/compare/v0.0.1...v0.0.2) (2024-02-05)
 
 ### 0.0.1 (2024-02-05)

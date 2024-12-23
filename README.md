@@ -48,15 +48,15 @@ const violations = await validate({
     }),
   ],
 })) /* [{
-  by: '@modulify/validator/IsString',
   value: '',
   path: ['form', 'nickname'],
+  violates: '@modulify/validator/IsString',
   reason: 'min',
   meta: 4,
 }, {
-  by: '@modulify/validator/IsString',
   value: '',
   path: ['form', 'password'],
+  violates: '@modulify/validator/IsString',
   reason: 'min',
   meta: 6,
 }] */

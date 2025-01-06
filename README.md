@@ -1,8 +1,8 @@
 # <img src="./logo.png" alt="Logo" width="36" /> `@modulify/validator`
 
+[![npm version](https://img.shields.io/npm/v/@modulify/validator.svg)](https://www.npmjs.com/package/@modulify/validator)
 [![codecov](https://codecov.io/gh/modulify/validator/branch/main/graph/badge.svg)](https://codecov.io/gh/modulify/validator)
 [![Tests Status](https://github.com/modulify/validator/actions/workflows/tests.yml/badge.svg)](https://github.com/modulify/validator/actions)
-[![npm version](https://badge.fury.io/js/%40modulify%2Fvalidator.svg)](https://www.npmjs.com/package/@modulify/validator)
 
 This library provides a declarative validation utility.
 

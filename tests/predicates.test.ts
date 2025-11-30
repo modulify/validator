@@ -11,6 +11,7 @@ import {
   isNumber,
   isObject,
   isRecord,
+  isShape,
   isString,
   isSymbol,
   isUndefined,
@@ -156,7 +157,6 @@ describe('isNumber', () => {
 
 describe('isObject', () => {
   test('returns true when a value is an object', () => {
-    expect(isObject(null)).toBe(true)
     expect(isObject({})).toBe(true)
     expect(isObject({ a: 1 })).toBe(true)
     expect(isObject(Object.create(null))).toBe(true)
@@ -168,6 +168,7 @@ describe('isObject', () => {
   })
 
   test('returns false when a value is not an object', () => {
+    expect(isObject(null)).toBe(false)
     expect(isObject(undefined)).toBe(false)
     expect(isObject(1)).toBe(false)
     expect(isObject('string')).toBe(false)
@@ -194,6 +195,25 @@ describe('isRecord', () => {
     class A {}
 
     expect(isRecord(new A())).toBe(false)
+  })
+})
+
+describe('isShape', () => {
+  test('returns true when a value is an object with correct specified properties', () => {
+    expect(isShape({
+      id: [isNumber, true],
+      name: [isString, true],
+    })({
+      id: 1,
+      name: '',
+    })).toBe(true)
+  })
+
+  test('returns false when a value is not an object with correct specified properties', () => {
+    expect(isShape({
+      id: [isNumber, true],
+      name: [isString, true],
+    })(2)).toBe(false)
   })
 })
 

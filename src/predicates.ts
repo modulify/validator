@@ -37,7 +37,7 @@ export function isExact <T = unknown>(exact: T){
   return (value: unknown): value is T => value === exact
 }
 
-/** Checks if value is null */
+/** Checks if a value is null */
 export function isNull (value: unknown): value is null {
   return value === null
 }
@@ -47,9 +47,9 @@ export function isNumber (value: unknown): value is number {
   return typeof value === 'number' && !isNaN(value)
 }
 
-/** Checks if a value is an object */
+/** Checks if a value is an object, excluding null value */
 export function isObject (value: unknown): value is object {
-  return typeof value === 'object'
+  return typeof value === 'object' && value !== null
 }
 
 /** Check if a value is a record like Record<PropertyKey, unknown> */
@@ -67,7 +67,7 @@ export function isSymbol (value: unknown): value is symbol {
   return typeof value === 'symbol'
 }
 
-/** Checks if value is undefined */
+/** Checks if a value is undefined */
 export function isUndefined (value: unknown): value is undefined {
   return typeof value === 'undefined'
 }
@@ -97,7 +97,39 @@ export function Or<T extends unknown[]>(
 }
 
 export function Not<T> (predicate: Predicate<T>): Predicate {
-  return (value: unknown): value is unknown => {
-    return !predicate(value)
-  }
+  return (value: unknown): value is unknown => !predicate(value)
 }
+
+
+export type Shape<T extends object> = {
+  [K in keyof T]: [Predicate<T[K]>, boolean]
+}
+
+// Without `any` inference does not work properly
+// eslint-disable-next-line
+type ExtractType<T extends Shape<any>> = {
+  [K in keyof T]: T[K] extends [Predicate<infer U>, true]
+    ? U
+    : T[K] extends [Predicate<infer U>, false]
+      ? U | undefined
+      : never;
+} extends infer O
+  ? O
+  : never
+
+// Without `any` inference does not work properly
+// eslint-disable-next-line
+export const isShape = <S extends Shape<any>>(shape: S) => {
+  const properties = Object.keys(shape) as Array<keyof S>
+
+  return (value: unknown): value is ExtractType<S> => isObject(value) && properties.every(p => {
+    const config = shape[p as keyof S] as [Predicate, boolean] | Predicate
+    const [predicate, required] = isArray(config) ? config : [config, true]
+
+    return p in value
+      && value[p as keyof object] !== undefined
+      && predicate(value[p as keyof object])
+      || !required
+  })
+}
+

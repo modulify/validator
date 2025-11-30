@@ -1,7 +1,5 @@
 import { expect, test } from 'vitest'
 
-import check from '@/assertions/check'
-
 import { HasLength } from '@/assertions/HasLength'
 
 test.each([
@@ -36,7 +34,7 @@ test.each([
   { options: { min: 3 }, value: '12', reason: 'min', meta: 3 },
   { options: { max: 5, min: 3 }, value: '123456', reason: 'max', meta: 5 },
 ])('invalid arrays #%#', ({ options, value, reason, meta }) => {
-  expect(check(HasLength(options), value)).toEqual({
+  expect(HasLength(options).check(value)).toEqual({
     value,
     path: [],
     violates: '@modulify/validator/HasLength',
@@ -52,7 +50,7 @@ test.each([
   { options: { min: 3 }, value: '12', reason: 'min', meta: 3 },
   { options: { max: 5, min: 3 }, value: '123456', reason: 'max', meta: 5 },
 ])('invalid strings #%#', ({ options, value, reason, meta }) => {
-  expect(check(HasLength(options), value)).toEqual({
+  expect(HasLength(options).check(value)).toEqual({
     value,
     path: [],
     violates: '@modulify/validator/HasLength',
@@ -68,7 +66,7 @@ test.each([
   { options: { min: 3 }, value: new Date(), reason: 'unsupported', meta: undefined },
   { options: { max: 5, min: 3 }, value: new Blob(), reason: 'unsupported', meta: undefined },
 ])('unsupported #%#', ({ options, value, reason, meta }) => {
-  expect(check(HasLength(options), value)).toEqual({
+  expect(HasLength(options).check(value)).toEqual({
     value,
     path: [],
     violates: '@modulify/validator/HasLength',

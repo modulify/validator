@@ -1,3 +1,5 @@
+import type { Validator } from '~types'
+
 import {
   describe,
   expect,
@@ -75,7 +77,7 @@ describe('validate', () => {
         }, {
           fqn: IsDefined.fqn,
           bail: false,
-        }),
+        }) as Validator,
         HasProperties({
           nickname: IsString.That(HasLength({ min: 4 })),
           password: IsString.That(HasLength({ min: 6 })),

@@ -13,28 +13,22 @@ export type Descriptor<T extends object> = {
   [P in keyof T]: MaybeMany<Constraint>
 }
 
-export default <T extends object>(descriptor: Descriptor<T>) => ({
-  run <F extends Validate | ValidateSync> (
+const keysOf = <T extends object>(value: T) => Object.keys(value) as Array<keyof T>
+
+export default <T extends object>(descriptor: Descriptor<T>): ValidationRunner => ({
+  run: <F extends Validate | ValidateSync> (
     validate: F,
     value: unknown,
     path: PropertyKey[]
-  ): Validation<F>[] {
-    if (isRecord(value)) {
-      const fields = Object.keys(descriptor) as Array<keyof Descriptor<T>>
-
-      return fields.reduce((accumulator, key) => [
-        ...accumulator,
-        validate(value[key], descriptor[key], [...path, key]) as Validation<F>,
-      ], [] as Validation<F>[])
-    } else {
-      return [
-        [{
-          value,
-          path,
-          violates: '@modulify/validator/HasProperties',
-          reason: 'unsupported',
-        }],
-      ] as Validation<F>[]
-    }
-  },
-} as ValidationRunner)
+  ): Validation<F>[] => isRecord(value)
+    ? keysOf(descriptor).reduce<Validation<F>[]>((all, key) => [
+      ...all,
+      validate(value[key], descriptor[key], [...path, key]) as Validation<F>,
+    ], [])
+    : [[{
+      value,
+      path,
+      violates: '@modulify/validator/HasProperties',
+      reason: 'unsupported',
+    }]] as Validation<F>[],
+})

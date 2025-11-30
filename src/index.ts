@@ -6,14 +6,10 @@ import type {
   Violation,
 } from '~types'
 
-import check from '@/assertions/check'
-
 export * from '@/assertions'
 export * from '@/runners'
 
-const isBatch = (c: Constraint): c is ValidationRunner => {
-  return 'run' in c
-}
+const isBatch = (c: Constraint): c is ValidationRunner => 'run' in c
 
 const _validate = async <T> (
   value: T,
@@ -28,7 +24,7 @@ const _validate = async <T> (
       continue
     }
 
-    const v = 'That' in c ? check(c, value, [...path]) : c(value, [...path])
+    const v = 'That' in c ? c.check(value, [...path]) : c(value, [...path])
 
     if (v instanceof Promise) {
       if (c.bail) {
@@ -65,7 +61,7 @@ const _sync = <T>(
       continue
     }
 
-    const v = 'That' in c ? check(c, value, [...path]) : c(value, [...path])
+    const v = 'That' in c ? c.check(value, [...path]) : c(value, [...path])
 
     if (v instanceof Promise) {
       throw new Error('Found asynchronous constraint validator ' + String(c.fqn))

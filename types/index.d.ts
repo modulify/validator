@@ -18,7 +18,13 @@ export type Meta<T> = {
 
 export type Assertion<T = unknown, M = unknown> = Predicate<T> & Meta<M> & {
   readonly also: Assertion[]
+
   That(...asserts: Assertion[]): Assertion<T, M>;
+
+  check (
+    value: unknown,
+    path?: PropertyKey[]
+  ): Violation<M>;
 }
 
 export type Violation<M = unknown> = {

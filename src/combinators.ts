@@ -2,6 +2,10 @@ import type {
   Constraint,
   InferConstraints,
   MaybeMany,
+  MergeObjectDescriptors,
+  ObjectShape,
+  PartialObjectDescriptor,
+  UnknownKeysMode,
   Validate,
   ValidateSync,
   Validation,
@@ -24,6 +28,11 @@ export type InferShape<D extends ShapeDescriptor> = {
   [K in keyof D]: InferConstraints<D[K]>
 }
 
+export type {
+  ObjectShape,
+  UnknownKeysMode,
+} from '~types'
+
 type InferTuple<T extends readonly MaybeMany<Constraint>[]> = {
   -readonly [K in keyof T]: InferConstraints<T[K]>
 }
@@ -37,6 +46,10 @@ type VariantMap = Record<PropertyKey, MaybeMany<Constraint>>
 type InferDiscriminatedUnion<T extends VariantMap> = {
   [K in keyof T]: InferConstraints<T[K]>
 }[keyof T]
+
+type StrictObjectShape<D extends ShapeDescriptor> = ObjectShape<D, 'strict'>
+
+type PassthroughObjectShape<D extends ShapeDescriptor> = ObjectShape<D, 'passthrough'>
 
 const passthrough = <const C extends MaybeMany<Constraint>, Accepted>(
   accepts: (value: unknown) => value is Accepted,
@@ -57,6 +70,131 @@ const passthrough = <const C extends MaybeMany<Constraint>, Accepted>(
 })
 
 const keysOf = <T extends object>(value: T) => Object.keys(value) as Array<keyof T>
+
+const hasOwn = (value: object, key: PropertyKey) => Object.prototype.hasOwnProperty.call(value, key)
+
+const hasUnknownKeys = <D extends ShapeDescriptor>(value: Record<PropertyKey, unknown>, descriptor: D) =>
+  Object.keys(value).some(key => !hasOwn(descriptor, key))
+
+const collectUnknownKeyViolations = (
+  value: Record<PropertyKey, unknown>,
+  path: PropertyKey[],
+  descriptor: ShapeDescriptor
+) => Object.keys(value)
+  .filter(key => !hasOwn(descriptor, key))
+  .map(key => [{
+    value: value[key],
+    path: [...path, key],
+    violates: { kind: 'validator', name: 'shape', code: 'shape.unknown-key', args: [] },
+  }])
+
+const pickDescriptor = <
+  D extends ShapeDescriptor,
+  const K extends readonly (keyof D)[],
+>(descriptor: D, keys: K): Pick<D, K[number]> => {
+  const picked = {} as Pick<D, K[number]>
+
+  keys.forEach(key => {
+    if (hasOwn(descriptor, key)) {
+      picked[key] = descriptor[key]
+    }
+  })
+
+  return picked
+}
+
+const omitDescriptor = <
+  D extends ShapeDescriptor,
+  const K extends readonly (keyof D)[],
+>(descriptor: D, keys: K): Omit<D, K[number]> => {
+  const omitted = { ...descriptor } as D
+
+  keys.forEach(key => {
+    delete omitted[key]
+  })
+
+  return omitted as Omit<D, K[number]>
+}
+
+const extendDescriptor = <
+  D extends ShapeDescriptor,
+  E extends ShapeDescriptor,
+>(descriptor: D, extension: E): MergeObjectDescriptors<D, E> => ({
+  ...descriptor,
+  ...extension,
+}) as MergeObjectDescriptors<D, E>
+
+const partialDescriptor = <D extends ShapeDescriptor>(descriptor: D): PartialObjectDescriptor<D> => {
+  const partial = {} as PartialObjectDescriptor<D>
+
+  keysOf(descriptor).forEach(key => {
+    partial[key] = optional(descriptor[key])
+  })
+
+  return partial
+}
+
+const createObjectShape = <
+  const D extends ShapeDescriptor,
+  const M extends UnknownKeysMode,
+>(descriptor: D, unknownKeys: M): ObjectShape<D, M> => {
+  const keys = keysOf(descriptor)
+
+  return {
+    descriptor,
+    unknownKeys,
+    check(value: unknown): value is InferShape<D> {
+      return isRecord(value)
+        && keys.every(key => matchesConstraints(value[key], descriptor[key]))
+        && (unknownKeys === 'passthrough' || !hasUnknownKeys(value, descriptor))
+    },
+    run<F extends Validate | ValidateSync>(
+      validate: F,
+      value: unknown,
+      path: PropertyKey[]
+    ): Validation<F>[] {
+      if (!isRecord(value)) {
+        return [[{
+          value,
+          path,
+          violates: { kind: 'validator', name: 'shape', code: 'type.record', args: [] },
+        }]] as Validation<F>[]
+      }
+
+      const validations = keys.reduce<Validation<F>[]>((all, key) => [
+        ...all,
+        validate(value[key], descriptor[key], [...path, key]) as Validation<F>,
+      ], [])
+
+      if (unknownKeys === 'strict') {
+        validations.push(...collectUnknownKeyViolations(value, path, descriptor) as Validation<F>[])
+      }
+
+      return validations
+    },
+    strict(): StrictObjectShape<D> {
+      return createObjectShape(descriptor, 'strict')
+    },
+    passthrough(): PassthroughObjectShape<D> {
+      return createObjectShape(descriptor, 'passthrough')
+    },
+    pick<const K extends readonly (keyof D)[]>(selectedKeys: K) {
+      return createObjectShape(pickDescriptor(descriptor, selectedKeys), unknownKeys)
+    },
+    omit<const K extends readonly (keyof D)[]>(selectedKeys: K) {
+      return createObjectShape(omitDescriptor(descriptor, selectedKeys), unknownKeys)
+    },
+    partial() {
+      return createObjectShape(partialDescriptor(descriptor), unknownKeys)
+    },
+    extend<const E extends ShapeDescriptor>(extension: E) {
+      return createObjectShape(extendDescriptor(descriptor, extension), unknownKeys)
+    },
+    merge<const E extends ShapeDescriptor, OM extends UnknownKeysMode>(shape: ObjectShape<E, OM>) {
+      return createObjectShape(extendDescriptor(descriptor, shape.descriptor), unknownKeys)
+    },
+  }
+}
 
 const toUnionFailure = (
   branches: readonly MaybeMany<Constraint>[],
@@ -224,28 +362,8 @@ export const record = <const C extends MaybeMany<Constraint>>(constraints: C): V
   },
 })
 
-export const shape = <const D extends ShapeDescriptor>(descriptor: D): Validator<InferShape<D>> => {
-  const keys = keysOf(descriptor)
-
-  return {
-    check(value: unknown): value is InferShape<D> {
-      return isRecord(value) && keys.every(key => matchesConstraints(value[key], descriptor[key]))
-    },
-    run: <F extends Validate | ValidateSync> (
-      validate: F,
-      value: unknown,
-      path: PropertyKey[]
-    ): Validation<F>[] => isRecord(value)
-      ? keys.reduce<Validation<F>[]>((all, key) => [
-        ...all,
-        validate(value[key], descriptor[key], [...path, key]) as Validation<F>,
-      ], [])
-      : [[{
-        value,
-        path,
-        violates: { kind: 'validator', name: 'shape', code: 'type.record', args: [] },
-      }]] as Validation<F>[],
-  }
+export const shape = <const D extends ShapeDescriptor>(descriptor: D): ObjectShape<D, 'passthrough'> => {
+  return createObjectShape(descriptor, 'passthrough')
 }
 
 export const exact = <const T>(value: T) => assert(isExact(value), {

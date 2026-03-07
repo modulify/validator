@@ -112,3 +112,17 @@ describe('validate tuple API', () => {
     }
   })
 })
+
+describe('root shape api', () => {
+  test('exports reusable shapes from the package root', () => {
+    const schema = shape({
+      name: [isDefined, isString],
+    }).strict()
+
+    expect(validate.sync({
+      name: 'kirill',
+    }, schema)).toEqual([true, {
+      name: 'kirill',
+    }, []])
+  })
+})

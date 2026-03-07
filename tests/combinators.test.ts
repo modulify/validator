@@ -24,6 +24,7 @@ import {
 } from '@/index'
 
 const assertionSubject = (name: string, code: string, args: unknown[] = []) => ({ kind: 'assertion', name, code, args })
+const validatorSubject = (name: string, code: string, args: unknown[] = []) => ({ kind: 'validator', name, code, args })
 
 describe('exact', () => {
   test('passes only exact values', () => {
@@ -478,6 +479,147 @@ describe('structural combinators', () => {
         code: 'type.record',
         args: [],
       },
+    }]])
+  })
+})
+
+describe('shape object api', () => {
+  const profile = shape({
+    id: isString,
+    nickname: optional(isString),
+    role: exact('admin'),
+  })
+
+  test('provide descriptor introspection and validate as regular constraints', () => {
+    expect(profile.descriptor).toEqual({
+      id: isString,
+      nickname: profile.descriptor.nickname,
+      role: profile.descriptor.role,
+    })
+    expect(profile.unknownKeys).toBe('passthrough')
+    expect(matches.sync({
+      id: 'u1',
+      nickname: undefined,
+      role: 'admin',
+    } as unknown, profile)).toBe(true)
+  })
+
+  test('default to passthrough mode for unknown keys', () => {
+    expect(validate.sync({
+      id: 'u1',
+      role: 'admin',
+      extra: true,
+    }, profile)).toEqual([true, {
+      id: 'u1',
+      role: 'admin',
+      extra: true,
+    }, []])
+  })
+
+  test('strict rejects unknown keys with machine-readable violations on the key path', () => {
+    expect(validate.sync({
+      id: 'u1',
+      role: 'admin',
+      extra: true,
+    }, profile.strict())).toEqual([false, {
+      id: 'u1',
+      role: 'admin',
+      extra: true,
+    }, [{
+      value: true,
+      path: ['extra'],
+      violates: validatorSubject('shape', 'shape.unknown-key'),
+    }]])
+  })
+
+  test('passthrough switches strict schemas back to permissive mode', () => {
+    expect(validate.sync({
+      id: 'u1',
+      role: 'admin',
+      extra: true,
+    }, profile.strict().passthrough())).toEqual([true, {
+      id: 'u1',
+      role: 'admin',
+      extra: true,
+    }, []])
+  })
+
+  test('pick and omit derive shapes without manual descriptor cloning', () => {
+    expect(validate.sync({
+      id: 'u1',
+      nickname: 'neo',
+    }, profile.pick(['id', 'nickname']))).toEqual([true, {
+      id: 'u1',
+      nickname: 'neo',
+    }, []])
+
+    expect(validate.sync({
+      id: 'u1',
+      role: 'admin',
+    }, profile.omit(['nickname']))).toEqual([true, {
+      id: 'u1',
+      role: 'admin',
+    }, []])
+  })
+
+  test('partial wraps every field with optional and keeps omitted values collapsed with undefined', () => {
+    expect(validate.sync({}, profile.partial())).toEqual([true, {}, []])
+    expect(validate.sync({
+      id: undefined,
+      nickname: undefined,
+      role: undefined,
+    }, profile.partial())).toEqual([true, {
+      id: undefined,
+      nickname: undefined,
+      role: undefined,
+    }, []])
+  })
+
+  test('extend adds or overrides fields while preserving the current unknown-keys mode', () => {
+    const extended = profile.strict().extend({
+      nickname: isString,
+      email: isString,
+    })
+
+    expect(extended.unknownKeys).toBe('strict')
+    expect(validate.sync({
+      id: 'u1',
+      nickname: undefined,
+      role: 'admin',
+      email: 'kirill@example.com',
+    }, extended)).toEqual([false, {
+      id: 'u1',
+      nickname: undefined,
+      role: 'admin',
+      email: 'kirill@example.com',
+    }, [{
+      value: undefined,
+      path: ['nickname'],
+      violates: assertionSubject('isString', 'type.string'),
+    }]])
+  })
+
+  test('merge combines descriptors and keeps the receiver unknown-keys mode', () => {
+    const merged = profile.strict().merge(shape({
+      role: exact('editor'),
+      team: isString,
+    }))
+
+    expect(merged.unknownKeys).toBe('strict')
+    expect(validate.sync({
+      id: 'u1',
+      role: 'editor',
+      team: 'validators',
+      extra: true,
+    }, merged)).toEqual([false, {
+      id: 'u1',
+      role: 'editor',
+      team: 'validators',
+      extra: true,
+    }, [{
+      value: true,
+      path: ['extra'],
+      violates: validatorSubject('shape', 'shape.unknown-key'),
     }]])
   })
 })

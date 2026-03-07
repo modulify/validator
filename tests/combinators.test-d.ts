@@ -145,4 +145,64 @@ describe('combinator types', () => {
       | { kind: 'team'; size: string | undefined }
     >>(result)
   })
+
+  test('shape preserves descriptor inference and object helpers derive new shapes', () => {
+    const profile = shape({
+      id: isString,
+      nickname: optional(isString),
+      role: exact('admin'),
+    })
+
+    const picked = profile.pick(['id', 'nickname'])
+    const omitted = profile.omit(['nickname'])
+    const partialProfile = profile.partial()
+    const extended = profile.extend({ team: isString })
+    const merged = profile.merge(shape({ role: exact('editor'), team: isString }))
+
+    assertType<ValidationTuple<{
+      id: string;
+      nickname: string | undefined;
+    }>>(validate.sync({
+      id: 'u1',
+      nickname: undefined,
+    }, picked))
+
+    assertType<ValidationTuple<{
+      id: string;
+      role: 'admin';
+    }>>(validate.sync({
+      id: 'u1',
+      role: 'admin',
+    }, omitted))
+
+    assertType<ValidationTuple<{
+      id: string | undefined;
+      nickname: string | undefined;
+      role: 'admin' | undefined;
+    }>>(validate.sync({}, partialProfile))
+
+    assertType<ValidationTuple<{
+      id: string;
+      nickname: string | undefined;
+      role: 'admin';
+      team: string;
+    }>>(validate.sync({
+      id: 'u1',
+      nickname: undefined,
+      role: 'admin',
+      team: 'validators',
+    }, extended))
+
+    assertType<ValidationTuple<{
+      id: string;
+      nickname: string | undefined;
+      role: 'editor';
+      team: string;
+    }>>(validate.sync({
+      id: 'u1',
+      nickname: undefined,
+      role: 'editor',
+      team: 'validators',
+    }, merged))
+  })
 })

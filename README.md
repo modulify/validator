@@ -4,33 +4,109 @@
 [![codecov](https://codecov.io/gh/modulify/validator/branch/main/graph/badge.svg)](https://codecov.io/gh/modulify/validator)
 [![Tests Status](https://github.com/modulify/validator/actions/workflows/tests.yml/badge.svg)](https://github.com/modulify/validator/actions)
 
-This library provides a declarative validation utility.
+`@modulify/validator` is a small TypeScript validation library built around three separate layers:
 
-The utility does not include text messages in the generated violations but instead provides metadata that can
-be used to create a custom view for them.
+- predicates for runtime checks and type narrowing;
+- assertions for machine-readable validation failures;
+- runners for recursive validation of arrays and object structures.
+
+The project is intentionally centered on structured metadata instead of built-in human-readable error messages.
+
+## What This Project Is
+
+This library is designed for cases where you want to:
+
+- keep simple type guards useful on their own;
+- validate nested data recursively;
+- receive structured violation objects instead of text messages;
+- decide later how those violations should be rendered or transformed.
+
+Typical outputs of the validation layer can be mapped into:
+
+- localized error messages;
+- form field error state;
+- API error payloads;
+- analytics/debug data;
+- custom UI or virtual DOM nodes.
+
+## Idea
+
+The project separates two concerns that are often mixed in one abstraction.
+
+### Predicates
+
+Predicates are small runtime checks that also act as TypeScript type guards.
+
+They answer questions like:
+
+- is this value a string?
+- is this value an object with a specific shape?
+- does this value satisfy a basic logical condition?
+
+This layer is meant to stay simple and independently useful even outside the validation pipeline.
+
+### Validators And Assertions
+
+Assertions are checks that can return a violation with structured metadata.
+
+Instead of generating a text message, an assertion returns data that describes:
+
+- what failed;
+- where it failed;
+- which rule failed;
+- which arguments or bounds were involved.
+
+That keeps presentation outside the library.
+
+### Why This Exists Alongside `zod`-Like Libraries
+
+Libraries such as `zod`, `yup`, and similar schema-oriented tools are well known and solve a large class of validation problems well.
+
+The goal of this project is different.
+
+It is not primarily trying to be:
+
+- a schema-definition DSL;
+- a form library with built-in message semantics;
+- an all-in-one parsing and presentation layer.
+
+Instead, this project focuses on:
+
+- small predicates for narrowing;
+- a separate assertion layer for diagnostics;
+- recursive validation runners;
+- machine-readable violations that consumers can map however they want.
+
+A short summary of the intended direction is:
+
+> Type-safe predicates for narrowing, and validators for machine-readable diagnostics.
+
+Or even shorter:
+
+> No messages, only meaning.
 
 ## Installation
 
 Using `yarn`:
 
-```
+```bash
 yarn add @modulify/validator
 ```
 
-or, using `npm`:
+Using `npm`:
 
-```
+```bash
 npm install @modulify/validator --save
 ```
 
-## Usage
+## Quick Example
 
 ```typescript
 import {
-  HasLength,
   HasProperties,
-  IsDefined,
-  IsString,
+  hasLength,
+  isDefined,
+  isString,
   validate,
 } from '@modulify/validator'
 
@@ -41,28 +117,35 @@ const violations = await validate({
   },
 }, HasProperties({
   form: [
-    IsDefined(),
+    isDefined,
     HasProperties({
-      nickname: IsString.That(HasLength({ min: 4 })),
-      password: IsString.That(HasLength({ min: 6 })),
+      nickname: [isString, hasLength({ min: 4 })],
+      password: [isString, hasLength({ min: 6 })],
     }),
   ],
-})) /* [{
+}))
+
+console.log(violations)
+/* [{
   value: '',
   path: ['form', 'nickname'],
-  violates: '@modulify/validator/IsString',
-  reason: 'min',
-  meta: 4,
+  violates: {
+    predicate: 'hasLength',
+    rule: 'min',
+    args: [4],
+  },
 }, {
   value: '',
   path: ['form', 'password'],
-  violates: '@modulify/validator/IsString',
-  reason: 'min',
-  meta: 6,
+  violates: {
+    predicate: 'hasLength',
+    rule: 'min',
+    args: [6],
+  },
 }] */
 ```
 
-or (for synchronous validation):
+Synchronous validation:
 
 ```typescript
 const violations = validate.sync({
@@ -72,80 +155,147 @@ const violations = validate.sync({
   },
 }, HasProperties({
   form: [
-    IsDefined(),
+    isDefined,
     HasProperties({
-      nickname: IsString.That(HasLength({ min: 4 })),
-      password: IsString.That(HasLength({ min: 6 })),
+      nickname: [isString, hasLength({ min: 4 })],
+      password: [isString, hasLength({ min: 6 })],
     }),
   ],
 }))
 ```
 
-## Exported types
+## Mental Model
 
-* `Violation` – an object that contains information about a value – why it violates one or more constraints;
-  includes following fields:
-  * `value` – value that violates something;
-  * `path` – path to the value, an empty array for scalar values and represents full path to the value in a complex
-    object;
-  * `violates` – indicator of the violated constraint;
-  * `reason` – indicator of the reason why the constraint is violated;
-  * `meta` – some data to describe the reason – what exactly the boundaries were not met;
-  ```typescript
-  import type { Violation } from '@modulify/validator/types'
-  ```
-* `Predicate` – function that accepts a value and returns `true` or `false`; logical unit that is used for checking
-  multiple things: type or if the value satisfies certain criteria; accepts generic argument `T` to specify
-  the type of the value, if predicate returns `true`;
-  ```typescript
-  import type { Predicate } from '@modulify/validator/types'
-  ```
-* `Assertion` – extension of the `Predicate` type that includes:
-  * `fqn` – field – some predefined name that will be used as a value for the `violates` field of `Violation`;
-  * `bail` – field – flag that interrupts further validation if the assertion fails;
-  * `reason` – field, optional – string or symbol that is used to indicate, why assertion has failed;
-    always added to a violation object, if present;
-  * `meta` – field, optional – some metadata to use in further analysis; always added to a violation object, if present;
-  * `That` – method – used to extend assertion with other assertions;
-  * `also` – field – readonly array of other assertions that was attached by `That` method;
-  ```typescript
-  import type { Assertion } from '@modulify/validator/types'
-  ```
+A practical way to think about the library is:
 
-## Exported members
+- predicates answer: does this value satisfy condition `X`?
+- assertions answer: if not, what exactly failed?
+- runners answer: where should validation continue recursively?
 
-* `validate` – function that accepts a value for validation as the first argument, constraints as the second,
-  and path to a value as the third (that is optional and used mostly for internal purposes, as validation is recursive);
-  includes method `sync` that has the same arguments set but performs validation synchronously and throws error when
-  finds an asynchronous constraint;
+In the current API this usually looks like:
 
-* `Assert` – creates assertion from logical predicate:
-  ```typescript
-  const IsSomething = Assert(isSomething, {
-    fqn: 'Some fqn',
-    bail: true,
-  })
-  ```
-  Arguments:
-  * Logical predicate
-  * Options, that includes `fqn`, `bail`, `reason` (optional), and `meta` (optional);
-* `HasLength` – checks length property of the specified string or array; can be configured with options:
-  * `exact` – if the length should be exactly equal the specified value;
-  * `max` – if the length should be equal or less than the specified value;
-  * `min` – if the length should be equal or greater than the specified value;
-  * `bail` – set this to true if you need to interrupt further validation if the assertion fails;
-* `IsBoolean` – checks if the value is **boolean**; interrupts further validation if fails;
-* `IsDate` – checks if the value is Date **object**; interrupts further validation if fails;
-* `IsDefined` – checks if the value is **not undefined**; interrupts further validation if fails;
-* `IsEmail` – checks if the value is a **valid email**; interrupts further validation if fails;
-* `IsNull` – checks if the value is **null**; interrupts further validation if fails;
-* `IsNumber` – checks if the value is **number**; interrupts further validation if fails;
-* `IsString` – checks if the value is **string**; interrupts further validation if fails;
-* `IsSymbol` – checks if the value is a **symbol**; interrupts further validation if fails;
-* `OneOf` – checks if the value equal to one of the specified values; can be configured with:
-  * `equalTo` – predicate f(a, b) that checks if two values are equal or not;
-  by default the strict `===` comparison is used
-  * `bail` – set this to true if you need to interrupt further validation if the assertion fails;
+- leaf checks with assertions such as `isString`, `isDefined`, `hasLength`, `oneOf`;
+- recursive composition with `HasProperties(...)` and `Each(...)`;
+- final collection through `validate(...)` or `validate.sync(...)`.
 
-* `Each` – a runner that runs validation for each element in array;
-* `HasProperties` – a runner that runs object's structure check.
+## Violation Shape
+
+```typescript
+import type { Violation } from '@modulify/validator/types'
+
+const violation: Violation = {
+  value: '',
+  path: ['form', 'nickname'],
+  violates: {
+    predicate: 'hasLength',
+    rule: 'min',
+    args: [4],
+  },
+}
+```
+
+Fields:
+
+- `value` - the value that failed validation;
+- `path` - full path to the value inside a nested structure;
+- `violates.predicate` - which assertion or internal check produced the violation;
+- `violates.rule` - which specific rule failed;
+- `violates.args` - structured metadata for that failed rule.
+
+The important part is that a violation is data, not presentation.
+
+## Public API
+
+### Root Exports
+
+The root package exports:
+
+- `validate`;
+- `validate.sync`;
+- all exports from `./assertions`;
+- all exports from `./runners`.
+
+### Assertions
+
+Available from:
+
+```typescript
+import {
+  assert,
+  hasLength,
+  isBoolean,
+  isDate,
+  isDefined,
+  isEmail,
+  isNull,
+  isNumber,
+  isString,
+  isSymbol,
+  oneOf,
+} from '@modulify/validator'
+```
+
+Members:
+
+- `assert(predicate, meta, constraints?)` - low-level assertion factory;
+- `hasLength(options)` - length checks for strings and arrays;
+- `isBoolean`;
+- `isDate`;
+- `isDefined`;
+- `isEmail`;
+- `isNull`;
+- `isNumber`;
+- `isString`;
+- `isSymbol`;
+- `oneOf(values, options?)`.
+
+### Predicates
+
+Available from:
+
+```typescript
+import {
+  And,
+  Not,
+  Or,
+  hasProperty,
+  isArray,
+  isBoolean,
+  isDate,
+  isEmail,
+  isExact,
+  isNull,
+  isNumber,
+  isObject,
+  isRecord,
+  isShape,
+  isString,
+  isSymbol,
+  isUndefined,
+} from '@modulify/validator/predicates'
+```
+
+This layer contains reusable runtime/type-guard helpers and combinators.
+
+### Runners
+
+Available from:
+
+```typescript
+import {
+  Each,
+  HasProperties,
+} from '@modulify/validator'
+```
+
+Members:
+
+- `Each(constraints)` - validates each array item, or a single value as one item;
+- `HasProperties(descriptor)` - validates object properties recursively.
+
+## Notes
+
+- Assertions return structured metadata instead of messages.
+- Predicates are intended to stay useful independently from the validation layer.
+- Runners are responsible for traversal; assertions are responsible for leaf-level checks.
+- The library is easier to use when one stable violation format is kept across the whole project.

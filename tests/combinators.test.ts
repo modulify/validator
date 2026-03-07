@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  discriminatedUnion,
   each,
   exact,
   nullable,
@@ -9,6 +10,7 @@ import {
   record,
   shape,
   tuple,
+  union,
 } from '@/combinators'
 import {
   hasLength,
@@ -311,6 +313,171 @@ describe('structural combinators', () => {
       value: [],
       path: [],
       violates: { kind: 'validator', name: 'record', code: 'type.record', args: [] },
+    }]])
+  })
+
+  test('union accepts values that match any branch', () => {
+    expect(validate.sync('admin', union([exact('admin'), exact('editor')]))).toEqual([true, 'admin', []])
+    expect(validate.sync(3, union([exact('admin'), isNumber]))).toEqual([true, 3, []])
+  })
+
+  test('union keeps branch details when no branch matches', () => {
+    expect(validate.sync('guest', union([exact('admin'), exact('editor')]))).toEqual([false, 'guest', [{
+      value: 'guest',
+      path: [],
+      violates: { kind: 'validator', name: 'union', code: 'union.no-match', args: [2] },
+    }, {
+      value: 'guest',
+      path: [],
+      violates: assertionSubject('exact', 'value.exact', ['admin']),
+    }, {
+      value: 'guest',
+      path: [],
+      violates: assertionSubject('exact', 'value.exact', ['editor']),
+    }]])
+  })
+
+  test('union composes object variants', () => {
+    const variant = union([
+      shape({
+        kind: exact('user'),
+        name: isString,
+      }),
+      shape({
+        kind: exact('team'),
+        size: isNumber,
+      }),
+    ])
+
+    expect(validate.sync({
+      kind: 'team',
+      size: 3,
+    }, variant)).toEqual([true, {
+      kind: 'team',
+      size: 3,
+    }, []])
+
+    expect(validate.sync({
+      kind: 'team',
+      size: '3',
+    }, variant)).toEqual([false, {
+      kind: 'team',
+      size: '3',
+    }, [{
+      value: {
+        kind: 'team',
+        size: '3',
+      },
+      path: [],
+      violates: { kind: 'validator', name: 'union', code: 'union.no-match', args: [2] },
+    }, {
+      value: 'team',
+      path: ['kind'],
+      violates: assertionSubject('exact', 'value.exact', ['user']),
+    }, {
+      value: undefined,
+      path: ['name'],
+      violates: assertionSubject('isString', 'type.string'),
+    }, {
+      value: '3',
+      path: ['size'],
+      violates: assertionSubject('isNumber', 'type.number'),
+    }]])
+  })
+
+  test('discriminatedUnion accepts matching variants', () => {
+    const variant = discriminatedUnion('kind', {
+      user: shape({
+        kind: exact('user'),
+        name: isString,
+      }),
+      team: shape({
+        kind: exact('team'),
+        size: isNumber,
+      }),
+    })
+
+    expect(validate.sync({
+      kind: 'team',
+      size: 3,
+    }, variant)).toEqual([true, {
+      kind: 'team',
+      size: 3,
+    }, []])
+  })
+
+  test('discriminatedUnion reports invalid discriminator values', () => {
+    const variant = discriminatedUnion('kind', {
+      user: shape({
+        kind: exact('user'),
+        name: isString,
+      }),
+      team: shape({
+        kind: exact('team'),
+        size: isNumber,
+      }),
+    })
+
+    expect(validate.sync({
+      kind: 'guest',
+      name: 'Alice',
+    }, variant)).toEqual([false, {
+      kind: 'guest',
+      name: 'Alice',
+    }, [{
+      value: 'guest',
+      path: ['kind'],
+      violates: {
+        kind: 'validator',
+        name: 'discriminatedUnion',
+        code: 'union.invalid-discriminator',
+        args: [['user', 'team']],
+      },
+    }]])
+  })
+
+  test('discriminatedUnion validates only the selected branch', () => {
+    const variant = discriminatedUnion('kind', {
+      user: shape({
+        kind: exact('user'),
+        name: isString,
+      }),
+      team: shape({
+        kind: exact('team'),
+        size: isNumber,
+      }),
+    })
+
+    expect(validate.sync({
+      kind: 'team',
+      size: '3',
+    }, variant)).toEqual([false, {
+      kind: 'team',
+      size: '3',
+    }, [{
+      value: '3',
+      path: ['size'],
+      violates: assertionSubject('isNumber', 'type.number'),
+    }]])
+  })
+
+  test('discriminatedUnion rejects non-record values', () => {
+    const variant = discriminatedUnion('kind', {
+      user: shape({
+        kind: exact('user'),
+        name: isString,
+      }),
+    })
+
+    expect(validate.sync([], variant)).toEqual([false, [], [{
+      value: [],
+      path: [],
+      violates: {
+        kind: 'validator',
+        name: 'discriminatedUnion',
+        code: 'type.record',
+        args: [],
+      },
     }]])
   })
 })

@@ -28,6 +28,16 @@ type InferTuple<T extends readonly MaybeMany<Constraint>[]> = {
   -readonly [K in keyof T]: InferConstraints<T[K]>
 }
 
+type InferUnion<T extends readonly MaybeMany<Constraint>[]> = {
+  [K in keyof T]: InferConstraints<T[K]>
+}[number]
+
+type VariantMap = Record<PropertyKey, MaybeMany<Constraint>>
+
+type InferDiscriminatedUnion<T extends VariantMap> = {
+  [K in keyof T]: InferConstraints<T[K]>
+}[keyof T]
+
 const passthrough = <const C extends MaybeMany<Constraint>, Accepted>(
   accepts: (value: unknown) => value is Accepted,
   constraints: C
@@ -47,6 +57,42 @@ const passthrough = <const C extends MaybeMany<Constraint>, Accepted>(
 })
 
 const keysOf = <T extends object>(value: T) => Object.keys(value) as Array<keyof T>
+
+const toUnionFailure = (
+  branches: readonly MaybeMany<Constraint>[],
+  value: unknown,
+  path: PropertyKey[],
+  branchResults: Validation<ValidateSync>[]
+) => {
+  const matched = branchResults.find(result => result.length === 0)
+
+  if (matched) {
+    return matched
+  }
+
+  return [{
+    value,
+    path,
+    violates: { kind: 'validator', name: 'union', code: 'union.no-match', args: [branches.length] },
+  }, ...branchResults.flat()]
+}
+
+const collectUnionViolations = (
+  branches: readonly MaybeMany<Constraint>[],
+  validate: Validate | ValidateSync,
+  value: unknown,
+  path: PropertyKey[]
+) => {
+  const branchResults = branches.map(branch => validate(value, branch, path))
+
+  if (branchResults.some(result => result instanceof Promise)) {
+    return Promise.all(branchResults.map(result => Promise.resolve(result))).then(results => {
+      return toUnionFailure(branches, value, path, results)
+    })
+  }
+
+  return toUnionFailure(branches, value, path, branchResults as Validation<ValidateSync>[])
+}
 
 export const each = <const C extends MaybeMany<Constraint>>(constraints: C): Validator<InferConstraints<C>[]> => ({
   check(value: unknown): value is InferConstraints<C>[] {
@@ -95,6 +141,65 @@ export const tuple = <const T extends readonly MaybeMany<Constraint>[]>(constrai
     }
 
     return constraints.map((constraint, index) => validate(value[index], constraint, [...path, index]) as Validation<F>)
+  },
+})
+
+export const union = <const T extends readonly MaybeMany<Constraint>[]>(constraints: T): Validator<InferUnion<T>> => ({
+  check(value: unknown): value is InferUnion<T> {
+    return constraints.some(constraint => matchesConstraints(value, constraint))
+  },
+  run<F extends Validate | ValidateSync>(
+    validate: F,
+    value: unknown,
+    path: PropertyKey[]
+  ): Validation<F>[] {
+    return [collectUnionViolations(constraints, validate, value, path) as Validation<F>]
+  },
+})
+
+export const discriminatedUnion = <
+  const K extends PropertyKey,
+  const T extends VariantMap,
+>(key: K, variants: T): Validator<InferDiscriminatedUnion<T>> => ({
+  check(value: unknown): value is InferDiscriminatedUnion<T> {
+    if (!isRecord(value)) {
+      return false
+    }
+
+    const discriminator = value[key]
+
+    return Object.prototype.hasOwnProperty.call(variants, discriminator)
+      && matchesConstraints(value, variants[discriminator as keyof T])
+  },
+  run<F extends Validate | ValidateSync>(
+    validate: F,
+    value: unknown,
+    path: PropertyKey[]
+  ): Validation<F>[] {
+    if (!isRecord(value)) {
+      return [[{
+        value,
+        path,
+        violates: { kind: 'validator', name: 'discriminatedUnion', code: 'type.record', args: [] },
+      }]] as Validation<F>[]
+    }
+
+    const discriminator = value[key]
+
+    if (!Object.prototype.hasOwnProperty.call(variants, discriminator)) {
+      return [[{
+        value: discriminator,
+        path: [...path, key],
+        violates: {
+          kind: 'validator',
+          name: 'discriminatedUnion',
+          code: 'union.invalid-discriminator',
+          args: [Reflect.ownKeys(variants)],
+        },
+      }]] as Validation<F>[]
+    }
+
+    return [validate(value, variants[discriminator as keyof T], path) as Validation<F>]
   },
 })
 

@@ -110,7 +110,7 @@ import {
   validate,
 } from '@modulify/validator'
 
-const violations = await validate({
+const [ok, validated, violations] = await validate({
   form: {
     nickname: '',
     password: '',
@@ -125,30 +125,17 @@ const violations = await validate({
   ],
 }))
 
-console.log(violations)
-/* [{
-  value: '',
-  path: ['form', 'nickname'],
-  violates: {
-    predicate: 'hasLength',
-    rule: 'min',
-    args: [4],
-  },
-}, {
-  value: '',
-  path: ['form', 'password'],
-  violates: {
-    predicate: 'hasLength',
-    rule: 'min',
-    args: [6],
-  },
-}] */
+if (ok) {
+  validated.form.nickname.toUpperCase()
+} else {
+  console.log(violations)
+}
 ```
 
 Synchronous validation:
 
 ```typescript
-const violations = validate.sync({
+const [ok, validated, violations] = validate.sync({
   form: {
     nickname: '',
     password: '',
@@ -162,6 +149,49 @@ const violations = validate.sync({
     }),
   ],
 }))
+
+if (ok) {
+  validated.form.password.toUpperCase()
+}
+```
+
+Sync narrowing of the original variable:
+
+```typescript
+import {
+  isDefined,
+  isString,
+  matches,
+} from '@modulify/validator'
+
+const value: unknown = 'nickname'
+
+if (matches.sync(value, [isDefined, isString])) {
+  value.toUpperCase()
+}
+```
+
+Typed success branch directly from `validate`:
+
+```typescript
+import {
+  HasProperties,
+  isDefined,
+  isString,
+  validate,
+} from '@modulify/validator'
+
+const schema = HasProperties({
+  name: [isDefined, isString],
+})
+
+const [ok, validated, violations] = await validate({ name: 'Kirill' }, schema)
+
+if (ok) {
+  validated.name.toUpperCase()
+} else {
+  console.log(violations)
+}
 ```
 
 ## Mental Model
@@ -176,12 +206,13 @@ In the current API this usually looks like:
 
 - leaf checks with assertions such as `isString`, `isDefined`, `hasLength`, `oneOf`;
 - recursive composition with `HasProperties(...)` and `Each(...)`;
-- final collection through `validate(...)` or `validate.sync(...)`.
+- typed validation through `validate(...)` or `validate.sync(...)`;
+- narrowing of the original sync variable through `matches.sync(...)`.
 
 ## Violation Shape
 
 ```typescript
-import type { Violation } from '@modulify/validator/types'
+import type { Violation } from '@modulify/validator'
 
 const violation: Violation = {
   value: '',
@@ -212,6 +243,7 @@ The root package exports:
 
 - `validate`;
 - `validate.sync`;
+- `matches.sync`;
 - all exports from `./assertions`;
 - all exports from `./runners`.
 
@@ -248,6 +280,24 @@ Members:
 - `isString`;
 - `isSymbol`;
 - `oneOf(values, options?)`.
+
+### Validate Result
+
+`validate(...)` returns a tuple:
+
+```typescript
+type ValidationTuple<T> =
+  | [ok: true, validated: T, violations: []]
+  | [ok: false, validated: unknown, violations: Violation[]]
+```
+
+That means:
+
+- `ok` tells whether validation passed;
+- `validated` becomes strongly typed only in the success branch;
+- `violations` is empty on success and contains structured errors on failure.
+
+The same contract is used by `validate.sync(...)`.
 
 ### Predicates
 
@@ -290,7 +340,7 @@ import {
 
 Members:
 
-- `Each(constraints)` - validates each array item, or a single value as one item;
+- `Each(constraints)` - validates each array item and fails on non-array values;
 - `HasProperties(descriptor)` - validates object properties recursively.
 
 ## Notes
@@ -299,3 +349,5 @@ Members:
 - Predicates are intended to stay useful independently from the validation layer.
 - Runners are responsible for traversal; assertions are responsible for leaf-level checks.
 - The library is easier to use when one stable violation format is kept across the whole project.
+- `validate(...)` narrows the `validated` tuple item, not the original input variable.
+- To narrow the original variable in sync code, use `matches.sync(...)`.

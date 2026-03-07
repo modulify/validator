@@ -21,6 +21,9 @@ import {
 
 import { validate } from '@/index'
 
+const valid = <T>(value: T) => [true, value, []]
+const invalid = <T>(value: T, violations: unknown[]) => [false, value, violations]
+
 const createAsyncAssertion = (
   name: string,
   handler: (value: unknown) => Promise<ReturnType<Assertion>>,
@@ -68,9 +71,14 @@ describe('validate', () => {
           nickname: 'none',
           password: 'qwerty',
         },
-      }, constraint)).toEqual([])
+      }, constraint)).toEqual(valid({
+        form: {
+          nickname: 'none',
+          password: 'qwerty',
+        },
+      }))
 
-      expect(await validate({}, constraint)).toEqual([{
+      expect(await validate({}, constraint)).toEqual(invalid({}, [{
         value: undefined,
         path: ['form'],
         violates: {
@@ -78,14 +86,19 @@ describe('validate', () => {
           rule: 'undefined',
           args: [],
         },
-      }])
+      }]))
 
       expect(await validate({
         form: {
           nickname: '',
           password: '',
         },
-      }, constraint)).toEqual([{
+      }, constraint)).toEqual(invalid({
+        form: {
+          nickname: '',
+          password: '',
+        },
+      }, [{
         value: '',
         path: ['form', 'nickname'],
         violates: {
@@ -101,7 +114,7 @@ describe('validate', () => {
           rule: 'min',
           args: [6],
         },
-      }])
+      }]))
     })
 
     test('does not check non-object values', async () => {
@@ -110,7 +123,7 @@ describe('validate', () => {
           nickname: [isString, hasLength({ min: 4 })],
           password: [isString, hasLength({ min: 6 })],
         }),
-      }))).toEqual([{
+      }))).toEqual(invalid('', [{
         value: '',
         path: [],
         violates: {
@@ -118,7 +131,7 @@ describe('validate', () => {
           rule: 'HasProperties',
           args: [],
         },
-      }])
+      }]))
     })
   })
 
@@ -131,7 +144,10 @@ describe('validate', () => {
         HasProperties({
           name: [isString, hasLength({ min: 4, max: 6 })],
         }),
-      ]))).toEqual([{
+      ]))).toEqual(invalid([
+        { name: '' },
+        { name: 'tooLong' },
+      ], [{
         value: '',
         path: [0, 'name'],
         violates: {
@@ -147,28 +163,28 @@ describe('validate', () => {
           rule: 'max',
           args: [6],
         },
-      }])
+      }]))
     })
 
-    test('checks single value', async () => {
+    test('rejects non-array values', async () => {
       expect(await validate({ name: 'tooLong' }, Each([
         HasProperties({
           name: [isString, hasLength({ min: 4, max: 6 })],
         }),
-      ]))).toEqual([{
-        value: 'tooLong',
-        path: ['name'],
+      ]))).toEqual(invalid({ name: 'tooLong' }, [{
+        value: { name: 'tooLong' },
+        path: [],
         violates: {
-          predicate: 'hasLength',
-          rule: 'max',
-          args: [6],
+          predicate: 'isArray',
+          rule: 'Each',
+          args: [],
         },
-      }])
+      }]))
     })
   })
 
   test('oneOf', async () => {
-    expect(await validate('', oneOf(['filled', 'outline', 'tonal']))).toEqual([{
+    expect(await validate('', oneOf(['filled', 'outline', 'tonal']))).toEqual(invalid('', [{
       value: '',
       path: [],
       violates: {
@@ -176,7 +192,7 @@ describe('validate', () => {
         rule: 'oneOf',
         args: [['filled', 'outline', 'tonal']],
       },
-    }])
+    }]))
   })
 
   test('skips the rest constraints if the current one with bail flag fails', async () => {
@@ -201,7 +217,12 @@ describe('validate', () => {
           password: [isString, hasLength({ min: 6 })],
         }),
       ],
-    }))).toEqual([])
+    }))).toEqual(valid({
+      form: {
+        nickname: 'none',
+        password: 'qwerty',
+      },
+    }))
 
     expect(await validate({}, HasProperties({
       form: [
@@ -211,7 +232,7 @@ describe('validate', () => {
           password: [isString, hasLength({ min: 6 })],
         }),
       ],
-    }))).toEqual([{
+    }))).toEqual(invalid({}, [{
       value: undefined,
       path: ['form'],
       violates: {
@@ -219,7 +240,7 @@ describe('validate', () => {
         rule: '_isDefined.bail=true',
         args: [],
       },
-    }])
+    }]))
 
     expect(await validate({}, HasProperties({
       form: [
@@ -229,7 +250,7 @@ describe('validate', () => {
           password: [isString, hasLength({ min: 6 })],
         }),
       ],
-    }))).toEqual([{
+    }))).toEqual(invalid({}, [{
       value: undefined,
       path: ['form'],
       violates: {
@@ -241,15 +262,15 @@ describe('validate', () => {
       value: undefined,
       path: ['form'],
       violates: {
-        predicate: 'isRecord',
-        rule: 'HasProperties',
-        args: [],
-      },
-    }])
+          predicate: 'isRecord',
+          rule: 'HasProperties',
+          args: [],
+        },
+    }]))
   })
 
   test('returns special violation for rejected async validator', async () => {
-    expect(await validate('', createAsyncAssertion('rejectingAssertion', async () => Promise.reject('test rejection')))).toEqual([{
+    expect(await validate('', createAsyncAssertion('rejectingAssertion', async () => Promise.reject('test rejection')))).toEqual(invalid('', [{
       value: '',
       path: [],
       violates: {
@@ -257,7 +278,7 @@ describe('validate', () => {
         rule: 'reject',
         args: ['test rejection'],
       },
-    }])
+    }]))
   })
 
   test('awaits async assertions with bail and stops further checks on failure', async () => {
@@ -271,7 +292,7 @@ describe('validate', () => {
         },
       }), true),
       hasLength({ min: 2 }),
-    ])).toEqual([{
+    ])).toEqual(invalid('', [{
       value: '',
       path: [],
       violates: {
@@ -279,7 +300,7 @@ describe('validate', () => {
         rule: 'asyncBail',
         args: [],
       },
-    }])
+    }]))
   })
 
   test('collects violations from async assertions without bail', async () => {
@@ -293,7 +314,7 @@ describe('validate', () => {
         },
       })),
       hasLength({ min: 2 }),
-    ])).toEqual([{
+    ])).toEqual(invalid('', [{
       value: '',
       path: [],
       violates: {
@@ -309,14 +330,14 @@ describe('validate', () => {
         rule: 'min',
         args: [2],
       },
-    }])
+    }]))
   })
 
   test('continues after async bail assertions that succeed', async () => {
     expect(await validate('', [
       createAsyncAssertion('asyncBailPass', async () => null, true),
       hasLength({ min: 2 }),
-    ])).toEqual([{
+    ])).toEqual(invalid('', [{
       value: '',
       path: [],
       violates: {
@@ -324,14 +345,14 @@ describe('validate', () => {
         rule: 'min',
         args: [2],
       },
-    }])
+    }]))
   })
 
   test('ignores async assertions without bail when they return null', async () => {
     expect(await validate('', [
       createAsyncAssertion('asyncNoBailPass', async () => null),
       hasLength({ min: 2 }),
-    ])).toEqual([{
+    ])).toEqual(invalid('', [{
       value: '',
       path: [],
       violates: {
@@ -339,7 +360,7 @@ describe('validate', () => {
         rule: 'min',
         args: [2],
       },
-    }])
+    }]))
   })
 })
 
@@ -361,9 +382,14 @@ describe('validate.sync', () => {
           nickname: 'none',
           password: 'qwerty',
         },
-      }, constraint)).toEqual([])
+      }, constraint)).toEqual(valid({
+        form: {
+          nickname: 'none',
+          password: 'qwerty',
+        },
+      }))
 
-      expect(validate.sync({}, constraint)).toEqual([{
+      expect(validate.sync({}, constraint)).toEqual(invalid({}, [{
         value: undefined,
         path: ['form'],
         violates: {
@@ -371,14 +397,19 @@ describe('validate.sync', () => {
           rule: 'undefined',
           args: [],
         },
-      }])
+      }]))
 
       expect(validate.sync({
         form: {
           nickname: '',
           password: '',
         },
-      }, constraint)).toEqual([{
+      }, constraint)).toEqual(invalid({
+        form: {
+          nickname: '',
+          password: '',
+        },
+      }, [{
         value: '',
         path: ['form', 'nickname'],
         violates: {
@@ -394,7 +425,7 @@ describe('validate.sync', () => {
           rule: 'min',
           args: [6],
         },
-      }])
+      }]))
     })
 
     test('does not check non-object values', () => {
@@ -403,7 +434,7 @@ describe('validate.sync', () => {
           nickname: [isString, hasLength({ min: 4 })],
           password: [isString, hasLength({ min: 6 })],
         }),
-      }))).toEqual([{
+      }))).toEqual(invalid('', [{
         value: '',
         path: [],
         violates: {
@@ -411,7 +442,7 @@ describe('validate.sync', () => {
           rule: 'HasProperties',
           args: [],
         },
-      }])
+      }]))
     })
   })
 
@@ -424,7 +455,10 @@ describe('validate.sync', () => {
         HasProperties({
           name: [isString, hasLength({ min: 4, max: 6 })],
         }),
-      ]))).toEqual([{
+      ]))).toEqual(invalid([
+        { name: '' },
+        { name: 'tooLong' },
+      ], [{
         value: '',
         path: [0, 'name'],
         violates: {
@@ -440,28 +474,28 @@ describe('validate.sync', () => {
           rule: 'max',
           args: [6],
         },
-      }])
+      }]))
     })
 
-    test('checks single value', () => {
+    test('rejects non-array values', () => {
       expect(validate.sync({ name: 'tooLong' }, Each([
         HasProperties({
           name: [isString, hasLength({ min: 4, max: 6 })],
         }),
-      ]))).toEqual([{
-        value: 'tooLong',
-        path: ['name'],
+      ]))).toEqual(invalid({ name: 'tooLong' }, [{
+        value: { name: 'tooLong' },
+        path: [],
         violates: {
-          predicate: 'hasLength',
-          rule: 'max',
-          args: [6],
+          predicate: 'isArray',
+          rule: 'Each',
+          args: [],
         },
-      }])
+      }]))
     })
   })
 
   test('oneOf', () => {
-    expect(validate.sync('', oneOf(['filled', 'outline', 'tonal']))).toEqual([{
+    expect(validate.sync('', oneOf(['filled', 'outline', 'tonal']))).toEqual(invalid('', [{
       value: '',
       path: [],
       violates: {
@@ -469,7 +503,7 @@ describe('validate.sync', () => {
         rule: 'oneOf',
         args: [['filled', 'outline', 'tonal']],
       },
-    }])
+    }]))
   })
 
   test('throws error if found async validator', () => {

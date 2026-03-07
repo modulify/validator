@@ -11,5 +11,9 @@ export default mergeConfig(basic, defineConfig({
       provider: 'istanbul',
       include: ['src/**'],
     },
+    typecheck: {
+      checker: 'tsc',
+      include: ['tests/**/*.test-d.ts'],
+    },
   },
 }))

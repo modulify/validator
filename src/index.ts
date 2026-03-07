@@ -1,26 +1,41 @@
 import type {
-  Assertion,
+  Constraint,
+  InferConstraints,
   MaybeMany,
   Recursive,
-  Validator,
+  ValidationTuple,
   Violation,
 } from '~types'
 
 export * from '@/assertions'
 export * from '@/runners'
+export type {
+  Constraint,
+  InferConstraint,
+  InferConstraints,
+  ValidationFailure,
+  ValidationSuccess,
+  ValidationTuple,
+  ValidationResult,
+  Validator,
+  Violation,
+} from '~types'
 
-const isRunner = (c: Assertion | Validator): c is Validator => 'run' in c
+import {
+  arrayify,
+  isValidator,
+} from '@/constraints'
 
-const _validate = async <T> (
-  value: T,
-  constraints: MaybeMany<Assertion | Validator>,
+const collectViolations = async (
+  value: unknown,
+  constraints: MaybeMany<Constraint>,
   path: PropertyKey[] = []
 ): Promise<Violation[]> => {
   const validations: Promise<Violation[]>[] = []
 
-  for (const c of arraify(constraints)) {
-    if (isRunner(c)) {
-      validations.push(...c.run(_validate, value, path).map(v => v instanceof Promise ? v : Promise.resolve(v)))
+  for (const c of arrayify(constraints)) {
+    if (isValidator(c)) {
+      validations.push(...c.run(collectViolations, value, path).map(v => v instanceof Promise ? v : Promise.resolve(v)))
       continue
     }
 
@@ -47,16 +62,16 @@ const _validate = async <T> (
   return settle(value, path, validations)
 }
 
-const _sync = <T>(
-  value: T,
-  constraints: MaybeMany<Assertion | Validator>,
+const collectViolationsSync = (
+  value: unknown,
+  constraints: MaybeMany<Constraint>,
   path: PropertyKey[] = []
 ): Violation[] => {
   const violations: Recursive<Violation>[] = []
 
-  for (const c of arraify(constraints)) {
-    if (isRunner(c)) {
-      violations.push(...c.run(_sync, value, path))
+  for (const c of arrayify(constraints)) {
+    if (isValidator(c)) {
+      violations.push(...c.run(collectViolationsSync, value, path))
       continue
     }
 
@@ -73,16 +88,10 @@ const _sync = <T>(
   return flatten(violations) as Violation[]
 }
 
-export const validate = Object.assign(_validate, {
-  sync: _sync,
-})
-
-type A<T> = T extends unknown[] ? T : T[]
-
-function arraify <T>(value: T): A<T> {
-  return Array.isArray(value)
-    ? [...value] as A<T>
-    : [value] as A<T>
+function toResult<T>(value: unknown, violations: Violation[]): ValidationTuple<T> {
+  return violations.length === 0
+    ? [true, value as T, []]
+    : [false, value, violations]
 }
 
 function flatten<T>(recursive: Recursive<T>[]): T[] {
@@ -117,3 +126,30 @@ async function settle (value: unknown, path: PropertyKey[], validations: Promise
 
   return violations
 }
+
+export const matches = {
+  sync<const C extends MaybeMany<Constraint>>(value: unknown, constraints: C): value is InferConstraints<C> {
+    return collectViolationsSync(value, constraints).length === 0
+  },
+}
+
+export const validate = Object.assign(
+  async <const C extends MaybeMany<Constraint>>(
+    value: unknown,
+    constraints: C
+  ): Promise<ValidationTuple<InferConstraints<C>>> => {
+    const violations = await collectViolations(value, constraints)
+
+    return toResult<InferConstraints<C>>(value, violations)
+  },
+  {
+    sync<const C extends MaybeMany<Constraint>>(
+      value: unknown,
+      constraints: C
+    ): ValidationTuple<InferConstraints<C>> {
+      const violations = collectViolationsSync(value, constraints)
+
+      return toResult<InferConstraints<C>>(value, violations)
+    },
+  }
+)

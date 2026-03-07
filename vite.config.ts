@@ -22,8 +22,8 @@ export default mergeConfig(basic, defineConfig({
       entry: {
         index: resolve(__dirname, './src/index.ts'),
         assertions: resolve(__dirname, './src/assertions.ts'),
+        combinators: resolve(__dirname, './src/combinators.ts'),
         predicates: resolve(__dirname, './src/predicates.ts'),
-        runners: resolve(__dirname, './src/runners/index.ts'),
       },
       fileName: (format, entryName) => `${entryName}.${{
         cjs: 'cjs',

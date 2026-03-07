@@ -10,14 +10,12 @@ import {
 } from 'vitest'
 
 import {
-  Each,
-  HasProperties,
-} from '@/runners'
+  shape,
+} from '@/combinators'
 
 import {
   assert,
   hasLength,
-  isDefined,
   isString,
   oneOf,
 } from '@/assertions'
@@ -60,107 +58,6 @@ const createAsyncAssertion = (
 }
 
 describe('validate', () => {
-  describe('HasProperties', () => {
-    test('checks object structure', async () => {
-      const constraint = HasProperties({
-        form: [
-          isDefined,
-          HasProperties({
-            nickname: [isString, hasLength({ min: 4 })],
-            password: [isString, hasLength({ min: 6 })],
-          }),
-        ],
-      })
-
-      expect(await validate({
-        form: {
-          nickname: 'none',
-          password: 'qwerty',
-        },
-      }, constraint)).toEqual(valid({
-        form: {
-          nickname: 'none',
-          password: 'qwerty',
-        },
-      }))
-
-      expect(await validate({}, constraint)).toEqual(invalid({}, [{
-        value: undefined,
-        path: ['form'],
-        violates: assertionSubject('isDefined', 'value.defined'),
-      }]))
-
-      expect(await validate({
-        form: {
-          nickname: '',
-          password: '',
-        },
-      }, constraint)).toEqual(invalid({
-        form: {
-          nickname: '',
-          password: '',
-        },
-      }, [{
-        value: '',
-        path: ['form', 'nickname'],
-        violates: assertionSubject('hasLength', 'length.min', [4]),
-      }, {
-        value: '',
-        path: ['form', 'password'],
-        violates: assertionSubject('hasLength', 'length.min', [6]),
-      }]))
-    })
-
-    test('does not check non-object values', async () => {
-      expect(await validate('', HasProperties({
-        form: HasProperties({
-          nickname: [isString, hasLength({ min: 4 })],
-          password: [isString, hasLength({ min: 6 })],
-        }),
-      }))).toEqual(invalid('', [{
-        value: '',
-        path: [],
-        violates: validatorSubject('HasProperties', 'type.record'),
-      }]))
-    })
-  })
-
-  describe('Each', () => {
-    test('checks elements in array', async () => {
-      expect(await validate([
-        { name: '' },
-        { name: 'tooLong' },
-      ], Each([
-        HasProperties({
-          name: [isString, hasLength({ min: 4, max: 6 })],
-        }),
-      ]))).toEqual(invalid([
-        { name: '' },
-        { name: 'tooLong' },
-      ], [{
-        value: '',
-        path: [0, 'name'],
-        violates: assertionSubject('hasLength', 'length.min', [4]),
-      }, {
-        value: 'tooLong',
-        path: [1, 'name'],
-        violates: assertionSubject('hasLength', 'length.max', [6]),
-      }]))
-    })
-
-    test('rejects non-array values', async () => {
-      expect(await validate({ name: 'tooLong' }, Each([
-        HasProperties({
-          name: [isString, hasLength({ min: 4, max: 6 })],
-        }),
-      ]))).toEqual(invalid({ name: 'tooLong' }, [{
-        value: { name: 'tooLong' },
-        path: [],
-        violates: validatorSubject('Each', 'type.array'),
-      }]))
-    })
-  })
-
   test('oneOf', async () => {
     expect(await validate('', oneOf(['filled', 'outline', 'tonal']))).toEqual(invalid('', [{
       value: '',
@@ -183,10 +80,10 @@ describe('validate', () => {
         nickname: 'none',
         password: 'qwerty',
       },
-    }, HasProperties({
+    }, shape({
       form: [
         makeDefined({ bail: true }),
-        HasProperties({
+        shape({
           nickname: [isString, hasLength({ min: 4 })],
           password: [isString, hasLength({ min: 6 })],
         }),
@@ -198,10 +95,10 @@ describe('validate', () => {
       },
     }))
 
-    expect(await validate({}, HasProperties({
+    expect(await validate({}, shape({
       form: [
         makeDefined({ bail: true }),
-        HasProperties({
+        shape({
           nickname: [isString, hasLength({ min: 4 })],
           password: [isString, hasLength({ min: 6 })],
         }),
@@ -212,10 +109,10 @@ describe('validate', () => {
       violates: assertionSubject('_isDefined.bail=true', '_isDefined.bail=true'),
     }]))
 
-    expect(await validate({}, HasProperties({
+    expect(await validate({}, shape({
       form: [
         makeDefined({ bail: false }),
-        HasProperties({
+        shape({
           nickname: [isString, hasLength({ min: 4 })],
           password: [isString, hasLength({ min: 6 })],
         }),
@@ -227,7 +124,7 @@ describe('validate', () => {
     }, {
       value: undefined,
       path: ['form'],
-      violates: validatorSubject('HasProperties', 'type.record'),
+      violates: validatorSubject('shape', 'type.record'),
     }]))
   })
 
@@ -295,107 +192,6 @@ describe('validate', () => {
 })
 
 describe('validate.sync', () => {
-  describe('HasProperties', () => {
-    test('checks object structure', () => {
-      const constraint = HasProperties({
-        form: [
-          isDefined,
-          HasProperties({
-            nickname: [isString, hasLength({ min: 4 })],
-            password: [isString, hasLength({ min: 6 })],
-          }),
-        ],
-      })
-
-      expect(validate.sync({
-        form: {
-          nickname: 'none',
-          password: 'qwerty',
-        },
-      }, constraint)).toEqual(valid({
-        form: {
-          nickname: 'none',
-          password: 'qwerty',
-        },
-      }))
-
-      expect(validate.sync({}, constraint)).toEqual(invalid({}, [{
-        value: undefined,
-        path: ['form'],
-        violates: assertionSubject('isDefined', 'value.defined'),
-      }]))
-
-      expect(validate.sync({
-        form: {
-          nickname: '',
-          password: '',
-        },
-      }, constraint)).toEqual(invalid({
-        form: {
-          nickname: '',
-          password: '',
-        },
-      }, [{
-        value: '',
-        path: ['form', 'nickname'],
-        violates: assertionSubject('hasLength', 'length.min', [4]),
-      }, {
-        value: '',
-        path: ['form', 'password'],
-        violates: assertionSubject('hasLength', 'length.min', [6]),
-      }]))
-    })
-
-    test('does not check non-object values', () => {
-      expect(validate.sync('', HasProperties({
-        form: HasProperties({
-          nickname: [isString, hasLength({ min: 4 })],
-          password: [isString, hasLength({ min: 6 })],
-        }),
-      }))).toEqual(invalid('', [{
-        value: '',
-        path: [],
-        violates: validatorSubject('HasProperties', 'type.record'),
-      }]))
-    })
-  })
-
-  describe('Each', () => {
-    test('checks elements in array', () => {
-      expect(validate.sync([
-        { name: '' },
-        { name: 'tooLong' },
-      ], Each([
-        HasProperties({
-          name: [isString, hasLength({ min: 4, max: 6 })],
-        }),
-      ]))).toEqual(invalid([
-        { name: '' },
-        { name: 'tooLong' },
-      ], [{
-        value: '',
-        path: [0, 'name'],
-        violates: assertionSubject('hasLength', 'length.min', [4]),
-      }, {
-        value: 'tooLong',
-        path: [1, 'name'],
-        violates: assertionSubject('hasLength', 'length.max', [6]),
-      }]))
-    })
-
-    test('rejects non-array values', () => {
-      expect(validate.sync({ name: 'tooLong' }, Each([
-        HasProperties({
-          name: [isString, hasLength({ min: 4, max: 6 })],
-        }),
-      ]))).toEqual(invalid({ name: 'tooLong' }, [{
-        value: { name: 'tooLong' },
-        path: [],
-        violates: validatorSubject('Each', 'type.array'),
-      }]))
-    })
-  })
-
   test('oneOf', () => {
     expect(validate.sync('', oneOf(['filled', 'outline', 'tonal']))).toEqual(invalid('', [{
       value: '',

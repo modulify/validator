@@ -10,17 +10,17 @@ import {
 } from 'vitest'
 
 import {
-  Each,
-  HasProperties,
+  each,
+  shape,
   isDefined,
   isString,
   validate,
 } from '@/index'
 
 describe('validate tuple types', () => {
-  const profile = HasProperties({
+  const profile = shape({
     name: [isDefined, isString],
-    tags: Each(isString),
+    tags: each(isString),
   })
 
   test('returns a discriminated tuple for validate.sync', () => {

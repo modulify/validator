@@ -8,7 +8,7 @@
 
 - predicates for runtime checks and type narrowing;
 - assertions for machine-readable validation failures;
-- runners for recursive validation of arrays and object structures.
+- combinators for schema composition, including structural recursion over arrays and objects.
 
 The project is intentionally centered on structured metadata instead of built-in human-readable error messages.
 
@@ -74,7 +74,7 @@ Instead, this project focuses on:
 
 - small predicates for narrowing;
 - a separate assertion layer for diagnostics;
-- recursive validation runners;
+- composable schema combinators;
 - machine-readable violations that consumers can map however they want.
 
 A short summary of the intended direction is:
@@ -103,24 +103,32 @@ npm install @modulify/validator --save
 
 ```typescript
 import {
-  HasProperties,
+  each,
+  shape,
+  exact,
   hasLength,
   isDefined,
   isString,
+  nullable,
+  optional,
   validate,
 } from '@modulify/validator'
 
 const [ok, validated, violations] = await validate({
   form: {
-    nickname: '',
+    nickname: undefined,
+    title: null,
     password: '',
+    role: 'admin',
   },
-}, HasProperties({
+}, shape({
   form: [
     isDefined,
-    HasProperties({
-      nickname: [isString, hasLength({ min: 4 })],
+    shape({
+      nickname: optional([isString, hasLength({ min: 4 })]),
+      title: nullable(isString),
       password: [isString, hasLength({ min: 6 })],
+      role: exact('admin'),
     }),
   ],
 }))
@@ -140,10 +148,10 @@ const [ok, validated, violations] = validate.sync({
     nickname: '',
     password: '',
   },
-}, HasProperties({
+}, shape({
   form: [
     isDefined,
-    HasProperties({
+    shape({
       nickname: [isString, hasLength({ min: 4 })],
       password: [isString, hasLength({ min: 6 })],
     }),
@@ -175,13 +183,13 @@ Typed success branch directly from `validate`:
 
 ```typescript
 import {
-  HasProperties,
+  shape,
   isDefined,
   isString,
   validate,
 } from '@modulify/validator'
 
-const schema = HasProperties({
+const schema = shape({
   name: [isDefined, isString],
 })
 
@@ -200,12 +208,12 @@ A practical way to think about the library is:
 
 - predicates answer: does this value satisfy condition `X`?
 - assertions answer: if not, what exactly failed?
-- runners answer: where should validation continue recursively?
+- combinators answer: how should constraints be combined into a bigger schema, including recursive object and array traversal?
 
 In the current API this usually looks like:
 
 - leaf checks with assertions such as `isString`, `isDefined`, `hasLength`, `oneOf`;
-- recursive composition with `HasProperties(...)` and `Each(...)`;
+- schema composition with combinators such as `exact`, `optional`, `nullable`, `nullish`, `shape(...)`, `each(...)`;
 - typed validation through `validate(...)` or `validate.sync(...)`;
 - narrowing of the original sync variable through `matches.sync(...)`.
 
@@ -247,15 +255,18 @@ The root package exports:
 - `validate.sync`;
 - `matches.sync`;
 - all exports from `./assertions`;
-- all exports from `./runners`.
+- all exports from `./combinators`.
 
-### Assertions
+### Assertions And Combinators
 
 Available from:
 
 ```typescript
 import {
   assert,
+  each,
+  shape,
+  exact,
   hasLength,
   isBoolean,
   isDate,
@@ -265,13 +276,19 @@ import {
   isNumber,
   isString,
   isSymbol,
+  nullable,
   oneOf,
+  optional,
+  nullish,
 } from '@modulify/validator'
 ```
 
 Members:
 
 - `assert(predicate, meta, constraints?)` - low-level assertion factory;
+- `each(constraints)` - validates each array item and fails on non-array values;
+- `shape(descriptor)` - validates object properties recursively;
+- `exact(value)` - exact value assertion built on top of predicate semantics;
 - `hasLength(options)` - length checks for strings and arrays;
 - `isBoolean`;
 - `isDate`;
@@ -281,7 +298,10 @@ Members:
 - `isNumber`;
 - `isString`;
 - `isSymbol`;
+- `nullable(constraints)` - accepts `null` or validates the nested constraints;
+- `nullish(constraints)` - accepts `null` or `undefined` or validates the nested constraints;
 - `oneOf(values, options?)`.
+- `optional(constraints)` - accepts `undefined` or validates the nested constraints.
 
 ### Validate Result
 
@@ -327,29 +347,13 @@ import {
 } from '@modulify/validator/predicates'
 ```
 
-This layer contains reusable runtime/type-guard helpers and combinators.
-
-### Runners
-
-Available from:
-
-```typescript
-import {
-  Each,
-  HasProperties,
-} from '@modulify/validator'
-```
-
-Members:
-
-- `Each(constraints)` - validates each array item and fails on non-array values;
-- `HasProperties(descriptor)` - validates object properties recursively.
+This layer contains reusable runtime/type-guard helpers and predicate combinators.
 
 ## Notes
 
 - Assertions return structured metadata instead of messages.
+- Combinators are thin schema-building helpers layered on top of assertions and validators; `each` and `shape` are structural combinators in this model.
 - Predicates are intended to stay useful independently from the validation layer.
-- Runners are responsible for traversal; assertions are responsible for leaf-level checks.
 - The library is easier to use when one stable violation format is kept across the whole project.
 - `validate(...)` narrows the `validated` tuple item, not the original input variable.
 - To narrow the original variable in sync code, use `matches.sync(...)`.

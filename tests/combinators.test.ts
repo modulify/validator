@@ -1,3 +1,8 @@
+import type {
+  Assertion,
+  ViolationSubject,
+} from '~types'
+
 import { describe, expect, test } from 'vitest'
 
 import {
@@ -23,8 +28,36 @@ import {
   validate,
 } from '@/index'
 
-const assertionSubject = (name: string, code: string, args: unknown[] = []) => ({ kind: 'assertion', name, code, args })
-const validatorSubject = (name: string, code: string, args: unknown[] = []) => ({ kind: 'validator', name, code, args })
+const assertionSubject = (name: string, code: string, args: unknown[] = []): ViolationSubject => ({ kind: 'assertion', name, code, args })
+const validatorSubject = (name: string, code: string, args: unknown[] = []): ViolationSubject => ({ kind: 'validator', name, code, args })
+
+const createAsyncAssertion = (
+  name: string,
+  handler: (value: unknown) => Promise<ReturnType<Assertion>>
+): Assertion => {
+  const assertion = (async (value: unknown) => handler(value)) as Assertion
+
+  Object.defineProperties(assertion, {
+    name: {
+      configurable: true,
+      value: name,
+    },
+    bail: {
+      enumerable: true,
+      value: false,
+    },
+    constraints: {
+      enumerable: true,
+      value: [],
+    },
+    check: {
+      enumerable: true,
+      value: (_value: unknown): _value is unknown => true,
+    },
+  })
+
+  return assertion
+}
 
 describe('exact', () => {
   test('passes only exact values', () => {
@@ -146,6 +179,49 @@ describe('combinators inside arrays and sync narrowing', () => {
 })
 
 describe('structural combinators', () => {
+  test('check methods cover direct runtime narrowing for structural validators', () => {
+    const strictProfile = shape({
+      id: isString,
+    }).strict().refine(value => {
+      return value.id === 'ok'
+        ? []
+        : [{ code: 'shape.id.invalid' }]
+    })
+    const variant = discriminatedUnion('kind', {
+      user: shape({
+        kind: exact('user'),
+        name: isString,
+      }),
+    })
+
+    expect(strictProfile.check('')).toBe(false)
+    expect(strictProfile.check({ id: 1 })).toBe(false)
+    expect(strictProfile.check({ id: 'ok', extra: true })).toBe(false)
+    expect(strictProfile.check({ id: 'bad' })).toBe(false)
+    expect(strictProfile.check({ id: 'ok' })).toBe(true)
+
+    expect(each(isString).check('')).toBe(false)
+    expect(each(isString).check(['ok', 1])).toBe(false)
+    expect(each(isString).check(['ok'])).toBe(true)
+
+    expect(tuple([exact('admin'), isNumber]).check('')).toBe(false)
+    expect(tuple([exact('admin'), isNumber]).check(['admin'])).toBe(false)
+    expect(tuple([exact('admin'), isNumber]).check(['admin', '3'])).toBe(false)
+    expect(tuple([exact('admin'), isNumber]).check(['admin', 3])).toBe(true)
+
+    expect(union([exact('admin'), isNumber]).check('guest')).toBe(false)
+    expect(union([exact('admin'), isNumber]).check('admin')).toBe(true)
+
+    expect(variant.check([])).toBe(false)
+    expect(variant.check({ kind: 'guest', name: 'Alice' })).toBe(false)
+    expect(variant.check({ kind: 'user', name: 1 })).toBe(false)
+    expect(variant.check({ kind: 'user', name: 'Alice' })).toBe(true)
+
+    expect(record(isString).check([])).toBe(false)
+    expect(record(isString).check({ primary: 1 })).toBe(false)
+    expect(record(isString).check({ primary: 'ok' })).toBe(true)
+  })
+
   test('shape checks object structure asynchronously', async () => {
     const constraint = shape({
       form: [
@@ -265,6 +341,14 @@ describe('structural combinators', () => {
     expect(validate.sync(['admin', 3], tuple([exact('admin'), isNumber]))).toEqual([true, ['admin', 3], []])
   })
 
+  test('tuple rejects non-array values before checking tuple length', () => {
+    expect(validate.sync('admin', tuple([exact('admin'), isNumber]))).toEqual([false, 'admin', [{
+      value: 'admin',
+      path: [],
+      violates: { kind: 'validator', name: 'tuple', code: 'type.array', args: [] },
+    }]])
+  })
+
   test('tuple reports length mismatches before nested validation', () => {
     expect(validate.sync(['admin'], tuple([exact('admin'), isNumber]))).toEqual([false, ['admin'], [{
       value: ['admin'],
@@ -335,6 +419,32 @@ describe('structural combinators', () => {
       value: 'guest',
       path: [],
       violates: assertionSubject('exact', 'value.exact', ['editor']),
+    }]])
+  })
+
+  test('union awaits async branches and keeps branch details intact', async () => {
+    const asyncAdmin = createAsyncAssertion('asyncAdmin', async (value: unknown) => {
+      return value === 'admin'
+        ? null
+        : {
+          value,
+          violates: assertionSubject('asyncAdmin', 'value.async-admin'),
+        }
+    })
+
+    expect(await validate('admin', union([exact('editor'), asyncAdmin]))).toEqual([true, 'admin', []])
+    expect(await validate('guest', union([exact('editor'), asyncAdmin]))).toEqual([false, 'guest', [{
+      value: 'guest',
+      path: [],
+      violates: { kind: 'validator', name: 'union', code: 'union.no-match', args: [2] },
+    }, {
+      value: 'guest',
+      path: [],
+      violates: assertionSubject('exact', 'value.exact', ['editor']),
+    }, {
+      value: 'guest',
+      path: [],
+      violates: assertionSubject('asyncAdmin', 'value.async-admin'),
     }]])
   })
 
@@ -560,6 +670,12 @@ describe('shape object api', () => {
       id: 'u1',
       role: 'admin',
     }, []])
+
+    expect(validate.sync({
+      id: 'u1',
+    }, profile.pick(['id', 'missing' as keyof typeof profile.descriptor]))).toEqual([true, {
+      id: 'u1',
+    }, []])
   })
 
   test('partial wraps every field with optional and keeps omitted values collapsed with undefined', () => {
@@ -715,6 +831,41 @@ describe('shape object api', () => {
     }]])
   })
 
+  test('refine ignores empty results and resolves missing nested path values to undefined', () => {
+    const optionalConfirmation = shape({
+      confirm: nullable(shape({
+        password: isString,
+      })),
+    }).refine(value => {
+      return value.confirm === null
+        ? {
+          path: ['confirm', 'password'],
+          code: 'shape.confirm.required',
+        }
+        : undefined
+    })
+
+    expect(validate.sync({
+      confirm: {
+        password: 'secret',
+      },
+    }, optionalConfirmation)).toEqual([true, {
+      confirm: {
+        password: 'secret',
+      },
+    }, []])
+
+    expect(validate.sync({
+      confirm: null,
+    }, optionalConfirmation)).toEqual([false, {
+      confirm: null,
+    }, [{
+      value: undefined,
+      path: ['confirm', 'password'],
+      violates: validatorSubject('shape', 'shape.confirm.required'),
+    }]])
+  })
+
   test('refine skips execution until the base shape has validated successfully', () => {
     let runs = 0
 
@@ -760,6 +911,21 @@ describe('shape object api', () => {
       path: ['confirmPassword'],
       violates: validatorSubject('shape', 'shape.fields.mismatch', [['password', 'confirmPassword']]),
     }]])
+  })
+
+  test('fieldsMatch passes when selected values are equal', () => {
+    const registration = shape({
+      password: isString,
+      confirmPassword: isString,
+    }).fieldsMatch(['password', 'confirmPassword'])
+
+    expect(validate.sync({
+      password: 'secret',
+      confirmPassword: 'secret',
+    }, registration)).toEqual([true, {
+      password: 'secret',
+      confirmPassword: 'secret',
+    }, []])
   })
 
   test('fieldsMatch accepts nested paths for matching values from different object levels', () => {

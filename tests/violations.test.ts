@@ -117,6 +117,24 @@ describe('collection', () => {
     expect(errors.at(['missing']).size).toBe(0)
   })
 
+  test('treats runtime undefined lookup as root path and rejects parent lookups from child nodes', () => {
+    const violations = [{
+      value: { form: true },
+      path: [],
+      violates: validatorSubject('shape', 'shape.root'),
+    }, {
+      value: '',
+      path: ['profile', 'email'],
+      violates: assertionSubject('isString', 'type.string'),
+    }] satisfies Violation[]
+
+    const errors = collection(violations)
+    const email = errors.tree().at(['profile', 'email'])
+
+    expect(Array.from(errors.at(undefined as unknown as readonly PropertyKey[]))).toEqual([violations[0]])
+    expect(email?.at([])).toBeUndefined()
+  })
+
   test('builds a tree with root errors, intermediate nodes and numeric indices', () => {
     const violations = [{
       value: { id: 'broken' },

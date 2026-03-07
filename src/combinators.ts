@@ -2,6 +2,7 @@ import type {
   Constraint,
   InferConstraints,
   MaybeMany,
+  ObjectShapeFieldSelector,
   ObjectShapeRefinement,
   ObjectShapeRefinementIssue,
   MergeObjectDescriptors,
@@ -35,6 +36,7 @@ export type InferShape<D extends ShapeDescriptor> = {
 }
 
 export type {
+  ObjectShapeFieldSelector,
   ObjectShape,
   ObjectShapeRefinement,
   ObjectShapeRefinementIssue,
@@ -152,6 +154,10 @@ const getPathValue = (value: unknown, path: readonly PropertyKey[]) => path.redu
   return Reflect.get(Object(current), key)
 }, value)
 
+const toPath = (selector: ObjectShapeFieldSelector): PropertyKey[] => Array.isArray(selector)
+  ? [...selector]
+  : [selector]
+
 const collectShapeRefinementViolations = <D extends ShapeDescriptor>(
   value: InferShape<D>,
   path: PropertyKey[],
@@ -241,14 +247,16 @@ const createObjectShape = <
     refine(refinement: ShapeRefinement<InferShape<D>>) {
       return createObjectShape(descriptor, unknownKeys, [...refinements, refinement])
     },
-    fieldsMatch<const K extends readonly [keyof D, keyof D]>(selectedKeys: K) {
+    fieldsMatch<const K extends readonly [ObjectShapeFieldSelector, ObjectShapeFieldSelector]>(selectedKeys: K) {
       const [left, right] = selectedKeys
+      const leftPath = toPath(left)
+      const rightPath = toPath(right)
 
       return createObjectShape(descriptor, unknownKeys, [...refinements, value => {
-        return value[left] === value[right]
+        return getPathValue(value, leftPath) === getPathValue(value, rightPath)
           ? []
           : [{
-            path: [right],
+            path: rightPath,
             code: 'shape.fields.mismatch',
             args: [selectedKeys],
           }]

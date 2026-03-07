@@ -13,6 +13,7 @@ export type {
   Constraint,
   InferConstraint,
   InferConstraints,
+  ObjectShapeFieldSelector,
   ObjectShapeRefinement,
   ObjectShapeRefinementIssue,
   ValidationFailure,

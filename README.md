@@ -235,6 +235,8 @@ Shapes expose:
 
 - `descriptor` - the current descriptor for introspection and reuse;
 - `unknownKeys` - either `'passthrough'` or `'strict'`;
+- `refine(rule)` - adds a sync object-level rule that runs after the base shape passes;
+- `fieldsMatch([left, right])` - a thin helper for common confirmation-field checks;
 - `strict()` - rejects extra keys with `shape.unknown-key` violations on the extra key path;
 - `passthrough()` - explicitly allows extra keys;
 - `pick(keys)` and `omit(keys)` - derive subsets without rebuilding descriptors manually;
@@ -245,9 +247,83 @@ Shapes expose:
 Notes:
 
 - `shape(...)` defaults to `'passthrough'`.
+- `refine(...)` is sync-only in this first step.
+- Object-level rules run only after the current shape has validated successfully as an object, including field checks and strict unknown-key checks.
+- `refine(...)` returns machine-readable shape violations with `violates.kind === 'validator'` and `violates.name === 'shape'`.
 - `pick`, `omit`, `partial`, `extend`, and `merge` preserve the current unknown-keys mode of the receiver.
+- `strict()` and `passthrough()` keep object-level rules because the descriptor stays the same.
+- `pick()`, `omit()`, `partial()`, `extend()`, and `merge()` drop object-level rules intentionally because generic refinements are opaque and may reference fields that no longer exist.
 - `merge(...)` keeps the receiver mode and lets the right-hand schema override overlapping fields.
 - `partial()` follows the current `shape(...)` model where an omitted key and a key with value `undefined` are treated the same during validation.
+
+## Object-Level Rules
+
+`shape(...)` can also express cross-field invariants without adding a second schema system.
+
+```typescript
+import {
+  isString,
+  shape,
+  validate,
+} from '@modulify/validator'
+
+const registration = shape({
+  password: isString,
+  confirmPassword: isString,
+}).refine(value => {
+  return value.password === value.confirmPassword
+    ? []
+    : [{
+      path: ['confirmPassword'],
+      code: 'shape.fields.mismatch',
+      args: [['password', 'confirmPassword']],
+    }]
+})
+
+const [ok, validated, violations] = validate.sync({
+  password: 'secret',
+  confirmPassword: 'different',
+}, registration)
+```
+
+`refine(...)` rules are intentionally thin:
+
+- return `[]`, `null`, or `undefined` when the rule passes;
+- return one issue or an array of issues when it fails;
+- `path` is relative to the current object shape and defaults to `[]`;
+- `value` is optional and defaults to the current object value at that relative path;
+- `code` stays fully machine-readable so application code can decide how to render it.
+
+For the common confirmation-field case there is a small helper:
+
+```typescript
+const registration = shape({
+  password: isString,
+  confirmPassword: isString,
+}).fieldsMatch(['password', 'confirmPassword'])
+```
+
+It also accepts nested path selectors when fields live at different levels:
+
+```typescript
+const registration = shape({
+  password: isString,
+  confirm: shape({
+    password: isString,
+  }),
+}).fieldsMatch([['password'], ['confirm', 'password']])
+```
+
+You can also mix the short top-level form with a nested selector:
+
+```typescript
+const registration = shape({
+  password: isString,
+  confirm: shape({
+    password: isString,
+  }),
+}).fieldsMatch(['password', ['confirm', 'password']])
+```
 
 ## Mental Model
 

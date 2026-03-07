@@ -622,4 +622,219 @@ describe('shape object api', () => {
       violates: validatorSubject('shape', 'shape.unknown-key'),
     }]])
   })
+
+  test('refine adds sync object-level rules that run after structural validation', async () => {
+    const registration = shape({
+      password: isString,
+      confirmPassword: isString,
+    }).refine(value => {
+      return value.password === value.confirmPassword
+        ? []
+        : [{
+          path: ['confirmPassword'],
+          code: 'shape.fields.mismatch',
+          args: [['password', 'confirmPassword']],
+        }]
+    })
+
+    expect(validate.sync({
+      password: 'secret',
+      confirmPassword: 'secret',
+    }, registration)).toEqual([true, {
+      password: 'secret',
+      confirmPassword: 'secret',
+    }, []])
+
+    expect(await validate({
+      password: 'secret',
+      confirmPassword: 'different',
+    }, registration)).toEqual([false, {
+      password: 'secret',
+      confirmPassword: 'different',
+    }, [{
+      value: 'different',
+      path: ['confirmPassword'],
+      violates: validatorSubject('shape', 'shape.fields.mismatch', [['password', 'confirmPassword']]),
+    }]])
+  })
+
+  test('refine can target nested paths when matching fields from different object levels', () => {
+    const registration = shape({
+      password: isString,
+      confirm: shape({
+        password: isString,
+      }),
+    }).refine(value => {
+      return value.password === value.confirm.password
+        ? []
+        : [{
+          path: ['confirm', 'password'],
+          code: 'shape.fields.mismatch',
+          args: [['password', 'confirm.password']],
+        }]
+    })
+
+    expect(validate.sync({
+      password: 'secret',
+      confirm: {
+        password: 'different',
+      },
+    }, registration)).toEqual([false, {
+      password: 'secret',
+      confirm: {
+        password: 'different',
+      },
+    }, [{
+      value: 'different',
+      path: ['confirm', 'password'],
+      violates: validatorSubject('shape', 'shape.fields.mismatch', [['password', 'confirm.password']]),
+    }]])
+  })
+
+  test('refine defaults to the object path and current value for object-level violations', () => {
+    const ranged = shape({
+      start: isString,
+      end: isString,
+    }).refine(() => ({
+      code: 'shape.range.invalid',
+    }))
+
+    expect(validate.sync({
+      start: '2026-03-01',
+      end: '2026-02-01',
+    }, ranged)).toEqual([false, {
+      start: '2026-03-01',
+      end: '2026-02-01',
+    }, [{
+      value: {
+        start: '2026-03-01',
+        end: '2026-02-01',
+      },
+      path: [],
+      violates: validatorSubject('shape', 'shape.range.invalid'),
+    }]])
+  })
+
+  test('refine skips execution until the base shape has validated successfully', () => {
+    let runs = 0
+
+    const registration = shape({
+      password: isString,
+      confirmPassword: isString,
+    }).refine(() => {
+      runs += 1
+
+      return [{
+        code: 'shape.refine.unreachable',
+      }]
+    })
+
+    expect(validate.sync({
+      password: 'secret',
+      confirmPassword: 1,
+    }, registration)).toEqual([false, {
+      password: 'secret',
+      confirmPassword: 1,
+    }, [{
+      value: 1,
+      path: ['confirmPassword'],
+      violates: assertionSubject('isString', 'type.string'),
+    }]])
+    expect(runs).toBe(0)
+  })
+
+  test('fieldsMatch is a thin helper over refine for the common confirmation-field case', () => {
+    const registration = shape({
+      password: isString,
+      confirmPassword: isString,
+    }).fieldsMatch(['password', 'confirmPassword'])
+
+    expect(validate.sync({
+      password: 'secret',
+      confirmPassword: 'different',
+    }, registration)).toEqual([false, {
+      password: 'secret',
+      confirmPassword: 'different',
+    }, [{
+      value: 'different',
+      path: ['confirmPassword'],
+      violates: validatorSubject('shape', 'shape.fields.mismatch', [['password', 'confirmPassword']]),
+    }]])
+  })
+
+  test('strict and passthrough keep object-level rules, while structural transforms drop them', () => {
+    const confirmed = shape({
+      password: isString,
+      confirmPassword: isString,
+    }).fieldsMatch(['password', 'confirmPassword'])
+
+    expect(validate.sync({
+      password: 'secret',
+      confirmPassword: 'different',
+    }, confirmed.strict())).toEqual([false, {
+      password: 'secret',
+      confirmPassword: 'different',
+    }, [{
+      value: 'different',
+      path: ['confirmPassword'],
+      violates: validatorSubject('shape', 'shape.fields.mismatch', [['password', 'confirmPassword']]),
+    }]])
+
+    expect(validate.sync({
+      password: 'secret',
+      confirmPassword: 'different',
+    }, confirmed.strict().passthrough())).toEqual([false, {
+      password: 'secret',
+      confirmPassword: 'different',
+    }, [{
+      value: 'different',
+      path: ['confirmPassword'],
+      violates: validatorSubject('shape', 'shape.fields.mismatch', [['password', 'confirmPassword']]),
+    }]])
+
+    expect(validate.sync({
+      password: 'secret',
+    }, confirmed.pick(['password']))).toEqual([true, {
+      password: 'secret',
+    }, []])
+
+    expect(validate.sync({
+      password: 'secret',
+    }, confirmed.omit(['confirmPassword']))).toEqual([true, {
+      password: 'secret',
+    }, []])
+
+    expect(validate.sync({
+      password: 'secret',
+    }, confirmed.partial())).toEqual([true, {
+      password: 'secret',
+    }, []])
+
+    expect(validate.sync({
+      password: 'secret',
+      confirmPassword: 'different',
+      email: 'kirill@example.com',
+    }, confirmed.extend({
+      email: isString,
+    }))).toEqual([true, {
+      password: 'secret',
+      confirmPassword: 'different',
+      email: 'kirill@example.com',
+    }, []])
+
+    expect(validate.sync({
+      password: 'secret',
+      confirmPassword: 'different',
+      email: 'kirill@example.com',
+      emailConfirmation: 'other@example.com',
+    }, confirmed.merge(shape({
+      email: isString,
+      emailConfirmation: isString,
+    }).fieldsMatch(['email', 'emailConfirmation'])))).toEqual([true, {
+      password: 'secret',
+      confirmPassword: 'different',
+      email: 'kirill@example.com',
+      emailConfirmation: 'other@example.com',
+    }, []])
+  })
 })

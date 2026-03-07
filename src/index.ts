@@ -13,6 +13,8 @@ export type {
   Constraint,
   InferConstraint,
   InferConstraints,
+  ObjectShapeRefinement,
+  ObjectShapeRefinementIssue,
   ValidationFailure,
   ValidationSuccess,
   ViolationKind,

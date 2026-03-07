@@ -2,6 +2,8 @@ import type {
   Constraint,
   InferConstraints,
   MaybeMany,
+  ObjectShapeRefinement,
+  ObjectShapeRefinementIssue,
   MergeObjectDescriptors,
   ObjectShape,
   PartialObjectDescriptor,
@@ -9,11 +11,15 @@ import type {
   Validate,
   ValidateSync,
   Validation,
+  Violation,
   Validator,
 } from '~types'
 
 import { assert } from '@/assert'
-import { matchesConstraints } from '@/constraints'
+import {
+  arrayify,
+  matchesConstraints,
+} from '@/constraints'
 import {
   isArray,
   isExact,
@@ -30,6 +36,8 @@ export type InferShape<D extends ShapeDescriptor> = {
 
 export type {
   ObjectShape,
+  ObjectShapeRefinement,
+  ObjectShapeRefinementIssue,
   UnknownKeysMode,
 } from '~types'
 
@@ -50,6 +58,8 @@ type InferDiscriminatedUnion<T extends VariantMap> = {
 type StrictObjectShape<D extends ShapeDescriptor> = ObjectShape<D, 'strict'>
 
 type PassthroughObjectShape<D extends ShapeDescriptor> = ObjectShape<D, 'passthrough'>
+
+type ShapeRefinement<T> = ObjectShapeRefinement<T>
 
 const passthrough = <const C extends MaybeMany<Constraint>, Accepted>(
   accepts: (value: unknown) => value is Accepted,
@@ -134,10 +144,51 @@ const partialDescriptor = <D extends ShapeDescriptor>(descriptor: D): PartialObj
   return partial
 }
 
+const getPathValue = (value: unknown, path: readonly PropertyKey[]) => path.reduce<unknown>((current, key) => {
+  if (current === null || current === undefined) {
+    return undefined
+  }
+
+  return Reflect.get(Object(current), key)
+}, value)
+
+const collectShapeRefinementViolations = <D extends ShapeDescriptor>(
+  value: InferShape<D>,
+  path: PropertyKey[],
+  refinements: readonly ShapeRefinement<InferShape<D>>[]
+) => refinements.flatMap(refinement => {
+  const result = refinement(value)
+
+  if (result === null || result === undefined) {
+    return []
+  }
+
+  return arrayify(result)
+    .filter((issue): issue is ObjectShapeRefinementIssue => issue !== null && issue !== undefined)
+    .map(issue => {
+      const issuePath = issue.path ? [...issue.path] : []
+
+      return {
+        value: issue.value ?? getPathValue(value, issuePath),
+        path: [...path, ...issuePath],
+        violates: {
+          kind: 'validator' as const,
+          name: 'shape',
+          code: issue.code,
+          args: issue.args ?? [],
+        },
+      }
+    })
+})
+
 const createObjectShape = <
   const D extends ShapeDescriptor,
   const M extends UnknownKeysMode,
->(descriptor: D, unknownKeys: M): ObjectShape<D, M> => {
+>(
+  descriptor: D,
+  unknownKeys: M,
+  refinements: readonly ShapeRefinement<InferShape<D>>[] = []
+): ObjectShape<D, M> => {
   const keys = keysOf(descriptor)
 
   return {
@@ -147,6 +198,7 @@ const createObjectShape = <
       return isRecord(value)
         && keys.every(key => matchesConstraints(value[key], descriptor[key]))
         && (unknownKeys === 'passthrough' || !hasUnknownKeys(value, descriptor))
+        && collectShapeRefinementViolations(value as InferShape<D>, [], refinements).length === 0
     },
     run<F extends Validate | ValidateSync>(
       validate: F,
@@ -170,13 +222,43 @@ const createObjectShape = <
         validations.push(...collectUnknownKeyViolations(value, path, descriptor) as Validation<F>[])
       }
 
-      return validations
+      if (validations.some(validation => validation instanceof Promise)) {
+        return [Promise.all(validations.map(validation => Promise.resolve(validation))).then(results => {
+          const structuralViolations = results.flat()
+
+          return structuralViolations.length > 0
+            ? structuralViolations
+            : collectShapeRefinementViolations(value as InferShape<D>, path, refinements)
+        }) as Validation<F>]
+      }
+
+      const structuralViolations = (validations as Violation[][]).flat()
+
+      return structuralViolations.length > 0
+        ? validations
+        : [collectShapeRefinementViolations(value as InferShape<D>, path, refinements) as Validation<F>]
+    },
+    refine(refinement: ShapeRefinement<InferShape<D>>) {
+      return createObjectShape(descriptor, unknownKeys, [...refinements, refinement])
+    },
+    fieldsMatch<const K extends readonly [keyof D, keyof D]>(selectedKeys: K) {
+      const [left, right] = selectedKeys
+
+      return createObjectShape(descriptor, unknownKeys, [...refinements, value => {
+        return value[left] === value[right]
+          ? []
+          : [{
+            path: [right],
+            code: 'shape.fields.mismatch',
+            args: [selectedKeys],
+          }]
+      }])
     },
     strict(): StrictObjectShape<D> {
-      return createObjectShape(descriptor, 'strict')
+      return createObjectShape(descriptor, 'strict', refinements)
     },
     passthrough(): PassthroughObjectShape<D> {
-      return createObjectShape(descriptor, 'passthrough')
+      return createObjectShape(descriptor, 'passthrough', refinements)
     },
     pick<const K extends readonly (keyof D)[]>(selectedKeys: K) {
       return createObjectShape(pickDescriptor(descriptor, selectedKeys), unknownKeys)

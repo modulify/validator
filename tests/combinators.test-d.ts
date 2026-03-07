@@ -205,4 +205,28 @@ describe('combinator types', () => {
       team: 'validators',
     }, merged))
   })
+
+  test('refine and fieldsMatch keep the original inferred shape type', () => {
+    const registration = shape({
+      password: isString,
+      confirmPassword: isString,
+    }).refine(value => {
+      assertType<{
+        password: string;
+        confirmPassword: string;
+      }>(value)
+
+      return []
+    })
+
+    const confirmedRegistration = registration.fieldsMatch(['password', 'confirmPassword'])
+
+    assertType<ValidationTuple<{
+      password: string;
+      confirmPassword: string;
+    }>>(validate.sync({
+      password: 'secret',
+      confirmPassword: 'secret',
+    }, confirmedRegistration))
+  })
 })

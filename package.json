@@ -17,17 +17,17 @@
       "require": "./dist/assertions.cjs",
       "default": "./dist/assertions.mjs"
     },
+    "./combinators": {
+      "types": "./dist/combinators.d.ts",
+      "import": "./dist/combinators.mjs",
+      "require": "./dist/combinators.cjs",
+      "default": "./dist/combinators.mjs"
+    },
     "./predicates": {
       "types": "./dist/predicates.d.ts",
       "import": "./dist/predicates.mjs",
       "require": "./dist/predicates.cjs",
       "default": "./dist/predicates.mjs"
-    },
-    "./runners": {
-      "types": "./dist/runners.d.ts",
-      "import": "./dist/runners.mjs",
-      "require": "./dist/runners.cjs",
-      "default": "./dist/runners.mjs"
     }
   },
   "types": "dist/index.d.ts",
@@ -36,11 +36,11 @@
       "assertions": [
         "./dist/assertions.d.ts"
       ],
+      "combinators": [
+        "./dist/combinators.d.ts"
+      ],
       "predicates": [
         "./dist/predicates.d.ts"
-      ],
-      "runners": [
-        "./dist/runners.d.ts"
       ]
     }
   },

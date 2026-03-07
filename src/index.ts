@@ -8,7 +8,7 @@ import type {
 } from '~types'
 
 export * from '@/assertions'
-export * from '@/runners'
+export * from '@/combinators'
 export type {
   Constraint,
   InferConstraint,

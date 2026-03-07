@@ -5,8 +5,8 @@ import {
 } from 'vitest'
 
 import {
-  Each,
-  HasProperties,
+  each,
+  shape,
   isDefined,
   isString,
   matches,
@@ -38,9 +38,9 @@ describe('matches.sync', () => {
 })
 
 describe('validate tuple API', () => {
-  const profile = HasProperties({
+  const profile = shape({
     name: [isDefined, isString],
-    tags: Each(isString),
+    tags: each(isString),
   })
 
   test('returns typed sync success branch through the validated tuple item', () => {
@@ -72,7 +72,7 @@ describe('validate tuple API', () => {
     expect(violations).toEqual([{
       value: 'ts',
       path: ['tags'],
-      violates: validatorSubject('Each', 'type.array'),
+      violates: validatorSubject('each', 'type.array'),
     }])
   })
 

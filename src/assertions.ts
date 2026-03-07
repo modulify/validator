@@ -22,9 +22,12 @@ import {
 
 export { assert }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+type Defined = {} | null
+
 export const isBoolean = assert(_isBoolean, { name: 'isBoolean', bail: true })
 export const isDate = assert(_isDate, { name: 'isDate', bail: true })
-export const isDefined = assert((value: unknown): value is Exclude<unknown, undefined> => value !== undefined, {
+export const isDefined = assert((value: unknown): value is Defined => value !== undefined, {
   name: 'isDefined',
   bail: true,
   rule: 'undefined',

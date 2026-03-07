@@ -93,7 +93,7 @@ export type Assertion<
  * Any reusable validation unit: either a leaf `Assertion` or a composed `Validator`.
  *
  * This is the main building block accepted by `validate(...)`, `matches.sync(...)`,
- * `HasProperties(...)`, and `Each(...)`.
+ * `shape(...)`, and `each(...)`.
  */
 export type Constraint<T = unknown> = Assertion<T> | Validator<T>
 
@@ -114,7 +114,7 @@ export type InferConstraint<C> =
  * `InferConstraints<[typeof isDefined, typeof isString]> // string`
  *
  * Example:
- * `InferConstraints<typeof HasProperties({ name: [isDefined, isString] })> // { name: string }`
+ * `InferConstraints<typeof shape({ name: [isDefined, isString] })> // { name: string }`
  */
 export type InferConstraints<C> =
   C extends readonly []
@@ -145,6 +145,9 @@ export type Validation<F extends ValidateLike> = F extends Validate
   ? MaybePromise<Violation[]>
   : Violation[]
 
+/** Controls how object shapes handle keys missing from the descriptor. */
+export type UnknownKeysMode = 'passthrough' | 'strict'
+
 /** Successful `validate(...)` tuple with typed `validated` value. */
 export type ValidationSuccess<T> = [ok: true, validated: T, violations: []]
 
@@ -166,7 +169,7 @@ export type ValidationTuple<T> = ValidationSuccess<T> | ValidationFailure
 export type ValidationResult<T> = ValidationTuple<T>
 
 /**
- * Composed validator used by recursive helpers such as `HasProperties(...)` and `Each(...)`.
+ * Composed validator used by recursive helpers such as `shape(...)` and `each(...)`.
  *
  * Custom validators should keep `check` aligned with runtime behavior so that
  * inference and sync narrowing stay trustworthy.
@@ -181,4 +184,46 @@ export interface Validator<T = unknown> {
     value: unknown,
     path: PropertyKey[]
   ): Validation<F>[];
+}
+
+/** Descriptor that maps object keys to one or many constraints. */
+export type ObjectDescriptor = Record<PropertyKey, MaybeMany<Constraint>>
+
+/** Runtime type inferred from an object descriptor. */
+export type InferObjectDescriptor<D extends ObjectDescriptor> = {
+  [K in keyof D]: InferConstraints<D[K]>
+}
+
+/** Descriptor produced by `.partial()` where every field accepts `undefined`. */
+export type PartialObjectDescriptor<D extends ObjectDescriptor> = {
+  [K in keyof D]: Validator<InferConstraints<D[K]> | undefined>
+}
+
+/** Utility type for overriding descriptor keys from left to right. */
+export type MergeObjectDescriptors<
+  Left extends ObjectDescriptor,
+  Right extends ObjectDescriptor,
+> = Omit<Left, keyof Right> & Right
+
+/**
+ * Object-aware validator with descriptor introspection and immutable shape helpers.
+ *
+ * Example:
+ * `const user = shape({ name: isString }).strict()`
+ */
+export interface ObjectShape<
+  D extends ObjectDescriptor = ObjectDescriptor,
+  M extends UnknownKeysMode = 'passthrough',
+> extends Validator<InferObjectDescriptor<D>> {
+  readonly descriptor: D;
+  readonly unknownKeys: M;
+  strict(): ObjectShape<D, 'strict'>;
+  passthrough(): ObjectShape<D, 'passthrough'>;
+  pick<const K extends readonly (keyof D)[]>(keys: K): ObjectShape<Pick<D, K[number]>, M>;
+  omit<const K extends readonly (keyof D)[]>(keys: K): ObjectShape<Omit<D, K[number]>, M>;
+  partial(): ObjectShape<PartialObjectDescriptor<D>, M>;
+  extend<const E extends ObjectDescriptor>(descriptor: E): ObjectShape<MergeObjectDescriptors<D, E>, M>;
+  merge<const E extends ObjectDescriptor, OM extends UnknownKeysMode>(
+    shape: ObjectShape<E, OM>
+  ): ObjectShape<MergeObjectDescriptors<D, E>, M>;
 }

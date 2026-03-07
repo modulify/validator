@@ -202,6 +202,53 @@ if (ok) {
 }
 ```
 
+## Shape API
+
+`shape(...)` is the reusable object shape API. It keeps the same validation kernel as before, but now also exposes immutable helper methods for deriving related shapes.
+
+```typescript
+import {
+  exact,
+  isString,
+  optional,
+  validate,
+  shape,
+} from '@modulify/validator'
+
+const profile = shape({
+  id: isString,
+  nickname: optional(isString),
+  role: exact('admin'),
+})
+
+const editableProfile = profile.partial()
+const publicProfile = profile.pick(['id', 'nickname'])
+const strictProfile = profile.strict()
+
+const [ok] = validate.sync({
+  id: 'u1',
+  nickname: 'neo',
+}, editableProfile)
+```
+
+Shapes expose:
+
+- `descriptor` - the current descriptor for introspection and reuse;
+- `unknownKeys` - either `'passthrough'` or `'strict'`;
+- `strict()` - rejects extra keys with `shape.unknown-key` violations on the extra key path;
+- `passthrough()` - explicitly allows extra keys;
+- `pick(keys)` and `omit(keys)` - derive subsets without rebuilding descriptors manually;
+- `partial()` - wraps every field in `optional(...)`;
+- `extend(descriptor)` - adds or overrides fields;
+- `merge(shape)` - merges another shape into the current one.
+
+Notes:
+
+- `shape(...)` defaults to `'passthrough'`.
+- `pick`, `omit`, `partial`, `extend`, and `merge` preserve the current unknown-keys mode of the receiver.
+- `merge(...)` keeps the receiver mode and lets the right-hand schema override overlapping fields.
+- `partial()` follows the current `shape(...)` model where an omitted key and a key with value `undefined` are treated the same during validation.
+
 ## Mental Model
 
 A practical way to think about the library is:
@@ -292,7 +339,7 @@ Members:
 - `assert(predicate, meta, constraints?)` - low-level assertion factory;
 - `discriminatedUnion(key, variants)` - validates tagged object variants via a discriminator field;
 - `each(constraints)` - validates each array item and fails on non-array values;
-- `shape(descriptor)` - validates object properties recursively;
+- `shape(descriptor)` - validates object properties recursively and returns a reusable object shape with immutable helper methods;
 - `exact(value)` - exact value assertion built on top of predicate semantics;
 - `hasLength(options)` - length checks for strings and arrays;
 - `isBoolean`;

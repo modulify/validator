@@ -1,43 +1,42 @@
 import type {
-  Constraint,
-  ValidationRunner,
+  Assertion,
   MaybeMany,
   Recursive,
+  Validator,
   Violation,
 } from '~types'
 
 export * from '@/assertions'
 export * from '@/runners'
 
-const isBatch = (c: Constraint): c is ValidationRunner => 'run' in c
+const isRunner = (c: Assertion | Validator): c is Validator => 'run' in c
 
 const _validate = async <T> (
   value: T,
-  constraints: MaybeMany<Constraint>,
+  constraints: MaybeMany<Assertion | Validator>,
   path: PropertyKey[] = []
 ): Promise<Violation[]> => {
   const validations: Promise<Violation[]>[] = []
 
   for (const c of arraify(constraints)) {
-    if (isBatch(c)) {
+    if (isRunner(c)) {
       validations.push(...c.run(_validate, value, path).map(v => v instanceof Promise ? v : Promise.resolve(v)))
       continue
     }
 
-    const v = 'That' in c ? c.check(value, [...path]) : c(value, [...path])
-
+    const v = c(value)
     if (v instanceof Promise) {
       if (c.bail) {
         const awaited = await v
         if (awaited) {
-          validations.push(Promise.resolve([awaited]))
+          validations.push(Promise.resolve([Object.assign(awaited, { path: [...path] })]))
           break
         }
       } else {
-        validations.push(v.then(v => v ? [v] : []))
+        validations.push(v.then(v => v ? [Object.assign(v, { path: [...path] })] : []))
       }
     } else if (v) {
-      validations.push(Promise.resolve([v]))
+      validations.push(Promise.resolve([Object.assign(v, { path: [...path] })]))
 
       if (c.bail) {
         break
@@ -50,27 +49,24 @@ const _validate = async <T> (
 
 const _sync = <T>(
   value: T,
-  constraints: MaybeMany<Constraint>,
+  constraints: MaybeMany<Assertion | Validator>,
   path: PropertyKey[] = []
 ): Violation[] => {
   const violations: Recursive<Violation>[] = []
 
   for (const c of arraify(constraints)) {
-    if (isBatch(c)) {
+    if (isRunner(c)) {
       violations.push(...c.run(_sync, value, path))
       continue
     }
 
-    const v = 'That' in c ? c.check(value, [...path]) : c(value, [...path])
-
+    const v = c(value)
     if (v instanceof Promise) {
-      throw new Error('Found asynchronous constraint validator ' + String(c.fqn))
+      throw new Error('Found asynchronous validator ' + String(c.name))
     } else if (v) {
-      violations.push(v)
+      violations.push(Object.assign(v, { path: [...path] }))
 
-      if (c.bail) {
-        break
-      }
+      if (c.bail) break
     }
   }
 
@@ -114,9 +110,7 @@ async function settle (value: unknown, path: PropertyKey[], validations: Promise
       violations.push({
         value,
         path,
-        violates: '@modulify/validator',
-        reason: 'reject',
-        meta: result.reason,
+        violates: { predicate: 'settle', rule: 'reject', args: [result.reason] },
       })
     }
   })

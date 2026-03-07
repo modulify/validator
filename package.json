@@ -51,7 +51,8 @@
     "stats": "gzip -c ./dist/index.mjs | wc -c",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:coverage:html": "vitest run --coverage --reporter=html --outputFile.html=./reports/html/report.html"
+    "test:coverage:html": "vitest run --coverage --reporter=html --outputFile.html=./reports/html/report.html",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.7.1",

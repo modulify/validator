@@ -3,10 +3,10 @@ import {
   test,
 } from 'vitest'
 
-import { OneOf } from '@/assertions'
+import { oneOf } from '@/assertions'
 
 test('array', () => {
-  const isCorrect = OneOf([1, 2, 3])
+  const isCorrect = oneOf([1, 2, 3]).check
 
   expect(isCorrect(1)).toBe(true)
   expect(isCorrect(2)).toBe(true)
@@ -21,13 +21,7 @@ test('enum', () => {
     Tonal = 'tonal'
   }
 
-  const isCorrect = OneOf(Appearance)
-
-  expect(isCorrect.meta).toEqual([
-    Appearance.Filled,
-    Appearance.Outline,
-    Appearance.Tonal,
-  ])
+  const isCorrect = oneOf(Appearance).check
 
   expect(isCorrect('filled')).toBe(true)
   expect(isCorrect('outline')).toBe(true)
@@ -39,17 +33,11 @@ test('enum', () => {
 })
 
 test('equalTo option', () => {
-  const isCorrect = OneOf([
+  const isCorrect = oneOf([
     { value: 1 },
     { value: 2 },
     { value: 3 },
-  ], { equalTo: (a, b) => typeof b === 'object' && 'value' in b && a.value === b.value })
-
-  expect(isCorrect.meta).toEqual([
-    { value: 1 },
-    { value: 2 },
-    { value: 3 },
-  ])
+  ], { equalTo: (a, b) => typeof b === 'object' && 'value' in b && a.value === b.value }).check
 
   expect(isCorrect({ value: 1 })).toBe(true)
   expect(isCorrect({ value: 2 })).toBe(true)
@@ -66,8 +54,5 @@ test.each([
   { accept: [1, 2, 3], value: 4 },
   { accept: [1, 2, 3, '4'], value: 4 },
 ])('invalid#%#', ({ accept, value }) => {
-  const isCorrect = OneOf(accept)
-
-  expect(isCorrect.meta).toEqual(accept)
-  expect(isCorrect(value)).toBe(false)
+  expect(oneOf(accept).check(value)).toBe(false)
 })

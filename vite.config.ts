@@ -20,12 +20,12 @@ export default mergeConfig(basic, defineConfig({
       name,
       formats: ['es', 'cjs'],
       entry: {
-        'index': resolve(__dirname, './src/index.ts'),
-        'assertions': resolve(__dirname, './src/assertions/index.ts'),
-        'predicates': resolve(__dirname, './src/predicates.ts'),
-        'runners': resolve(__dirname, './src/runners/index.ts'),
+        index: resolve(__dirname, './src/index.ts'),
+        assertions: resolve(__dirname, './src/assertions.ts'),
+        predicates: resolve(__dirname, './src/predicates.ts'),
+        runners: resolve(__dirname, './src/runners/index.ts'),
       },
-      fileName: (format, name) => `${name}.${{
+      fileName: (format, entryName) => `${entryName}.${{
         cjs: 'cjs',
         es: 'mjs',
       }[format as 'es' | 'cjs']}`,

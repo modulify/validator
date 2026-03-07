@@ -1,9 +1,8 @@
 import { expect, test } from 'vitest'
 
-import { HasLength } from '@/assertions/HasLength'
+import { hasLength } from '@/assertions'
 
 test.each([
-  // arrays
   { options: { exact: 3 }, value: [1, 2, 3] },
   { options: { max: 5 }, value: [] },
   { options: { max: 5 }, value: [1, 2, 3, 4] },
@@ -12,7 +11,6 @@ test.each([
   { options: { min: 4 }, value: [1, 2, 3, 4, 5] },
   { options: { max: 5, min: 3 }, value: [1, 2, 3] },
   { options: { max: 5, min: 3 }, value: [1, 2, 3, 4, 5] },
-  // strings
   { options: { exact: 3 }, value: '123' },
   { options: { exact: 5 }, value: '12345' },
   { options: { max: 5 }, value: '' },
@@ -24,53 +22,56 @@ test.each([
   { options: { max: 5, min: 3 }, value: '1234' },
   { options: { max: 5, min: 3 }, value: '12345' },
 ])('valid #%#', ({ options, value }) => {
-  expect(HasLength(options)(value)).toBe(true)
+  expect(hasLength(options).check(value)).toBe(true)
+  expect(hasLength(options)(value)).toBe(null)
 })
 
 test.each([
-  { options: { exact: 3 }, value: '12', reason: 'exact', meta: 3 },
-  { options: { exact: 3 }, value: '1234', reason: 'exact', meta: 3 },
-  { options: { max: 5 }, value: '123456', reason: 'max', meta: 5 },
-  { options: { min: 3 }, value: '12', reason: 'min', meta: 3 },
-  { options: { max: 5, min: 3 }, value: '123456', reason: 'max', meta: 5 },
-])('invalid arrays #%#', ({ options, value, reason, meta }) => {
-  expect(HasLength(options).check(value)).toEqual({
+  { options: { exact: 3 }, value: '12', rule: 'exact', args: [3] },
+  { options: { exact: 3 }, value: '1234', rule: 'exact', args: [3] },
+  { options: { max: 5 }, value: '123456', rule: 'max', args: [5] },
+  { options: { min: 3 }, value: '12', rule: 'min', args: [3] },
+  { options: { max: 5, min: 3 }, value: '123456', rule: 'max', args: [5] },
+])('invalid strings #%#', ({ options, value, rule, args }) => {
+  expect(hasLength(options)(value)).toEqual({
     value,
-    path: [],
-    violates: '@modulify/validator/HasLength',
-    reason,
-    meta,
+    violates: {
+      predicate: 'hasLength',
+      rule,
+      args,
+    },
   })
 })
 
 test.each([
-  { options: { exact: 3 }, value: '12', reason: 'exact', meta: 3 },
-  { options: { exact: 3 }, value: '1234', reason: 'exact', meta: 3 },
-  { options: { max: 5 }, value: '123456', reason: 'max', meta: 5 },
-  { options: { min: 3 }, value: '12', reason: 'min', meta: 3 },
-  { options: { max: 5, min: 3 }, value: '123456', reason: 'max', meta: 5 },
-])('invalid strings #%#', ({ options, value, reason, meta }) => {
-  expect(HasLength(options).check(value)).toEqual({
+  { options: { exact: 3 }, value: [1, 2], rule: 'exact', args: [3] },
+  { options: { max: 5 }, value: [1, 2, 3, 4, 5, 6], rule: 'max', args: [5] },
+  { options: { min: 3 }, value: [], rule: 'min', args: [3] },
+  { options: { range: [3, 5] as [number, number] }, value: [1, 2], rule: 'range', args: [[3, 5]] },
+])('invalid arrays #%#', ({ options, value, rule, args }) => {
+  expect(hasLength(options)(value)).toEqual({
     value,
-    path: [],
-    violates: '@modulify/validator/HasLength',
-    reason,
-    meta,
+    violates: {
+      predicate: 'hasLength',
+      rule,
+      args,
+    },
   })
 })
 
 test.each([
-  { options: { exact: 3 }, value: {}, reason: 'unsupported', meta: undefined },
-  { options: { exact: 3 }, value: null, reason: 'unsupported', meta: undefined },
-  { options: { max: 5 }, value: undefined, reason: 'unsupported', meta: undefined },
-  { options: { min: 3 }, value: new Date(), reason: 'unsupported', meta: undefined },
-  { options: { max: 5, min: 3 }, value: new Blob(), reason: 'unsupported', meta: undefined },
-])('unsupported #%#', ({ options, value, reason, meta }) => {
-  expect(HasLength(options).check(value)).toEqual({
+  { options: { exact: 3 }, value: {} },
+  { options: { exact: 3 }, value: null },
+  { options: { max: 5 }, value: undefined },
+  { options: { min: 3 }, value: new Date() },
+  { options: { max: 5, min: 3 }, value: new Blob() },
+])('unsupported #%#', ({ options, value }) => {
+  expect(hasLength(options)(value)).toEqual({
     value,
-    path: [],
-    violates: '@modulify/validator/HasLength',
-    reason,
-    meta,
+    violates: {
+      predicate: 'hasLength',
+      rule: 'unsupported',
+      args: [],
+    },
   })
 })

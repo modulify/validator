@@ -1,15 +1,15 @@
 import type {
-  Constraint,
+  Assertion,
   MaybeMany,
   Validate,
   ValidateSync,
   Validation,
-  ValidationRunner,
+  Validator,
 } from '~types'
 
 import { isArray } from '@/predicates'
 
-export default (constraints: MaybeMany<Constraint>): ValidationRunner => ({
+export default (constraints: MaybeMany<Assertion | Validator>): Validator => ({
   run <F extends Validate | ValidateSync> (
     validate: F,
     value: unknown,

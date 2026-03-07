@@ -13,22 +13,41 @@ export {
   collection,
   ViolationCollection,
 } from '@/violations'
+export {
+  describe,
+  meta,
+} from '@/metadata'
 export type {
+  AllOfConstraintDescriptor,
+  AssertionDescriptor,
+  AssertionDescriptorConstraint,
   Constraint,
+  ConstraintDescriptor,
+  ConstraintDescriptorBase,
+  ConstraintMetadata,
   InferConstraint,
   InferConstraints,
+  DiscriminatedUnionConstraintDescriptor,
+  EachConstraintDescriptor,
   ObjectShapeFieldSelector,
   ObjectShapeRefinement,
   ObjectShapeRefinementIssue,
+  ObjectShapeRuleDescriptor,
+  RecordConstraintDescriptor,
+  ShapeConstraintDescriptor,
+  TupleConstraintDescriptor,
   ValidationFailure,
   ValidationSuccess,
   ViolationKind,
   ViolationSubject,
   ViolationTreeNode,
+  UnionConstraintDescriptor,
   ValidationTuple,
   ValidationResult,
   Validator,
+  ValidatorDescriptor,
   Violation,
+  WrapperConstraintDescriptor,
 } from '~types'
 
 import {

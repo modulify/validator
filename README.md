@@ -325,6 +325,57 @@ const registration = shape({
 }).fieldsMatch(['password', ['confirm', 'password']])
 ```
 
+## Metadata And Introspection
+
+`meta(...)` attaches machine-readable metadata to any assertion or validator without changing validation semantics.
+
+```typescript
+import {
+  describe,
+  isString,
+  meta,
+  optional,
+  shape,
+} from '@modulify/validator'
+
+const registration = meta(shape({
+  email: meta(isString, {
+    title: 'Email',
+    placeholder: 'name@example.com',
+  }),
+  nickname: optional(isString),
+}).strict(), {
+  title: 'Registration form',
+})
+
+const node = describe(registration)
+```
+
+`describe(...)` returns a recursive machine-readable descriptor tree for built-in constraints.
+
+Examples of `kind` values:
+
+- `'assertion'` for leaf assertions;
+- `'allOf'` for array slots that chain multiple constraints in sequence;
+- `'optional'`, `'nullable'`, `'nullish'` for wrappers;
+- `'shape'`, `'each'`, `'tuple'`, `'record'` for structural validators;
+- `'union'` and `'discriminatedUnion'` for branching validators;
+- `'validator'` as a generic fallback for custom validators without built-in structural instrumentation.
+
+Shape descriptors include:
+
+- `metadata` attached with `meta(...)`;
+- `unknownKeys` with `'passthrough'` or `'strict'`;
+- `fields` with child descriptors per object field;
+- `rules` with lightweight machine-readable summaries of object-level rules such as `refine(...)` and `fieldsMatch(...)`.
+
+Current boundaries of this layer:
+
+- no built-in message rendering or i18n;
+- no JSON Schema exporter yet;
+- no metadata inheritance across the schema tree;
+- no separate schema DSL alongside the existing runtime constraints.
+
 ## Mental Model
 
 A practical way to think about the library is:
@@ -434,6 +485,8 @@ The root package exports:
 - `validate`;
 - `validate.sync`;
 - `matches.sync`;
+- `meta`;
+- `describe`;
 - `collection`;
 - `ViolationCollection`;
 - all exports from `./assertions`;
@@ -445,6 +498,7 @@ Available from:
 
 ```typescript
 import {
+  describe,
   discriminatedUnion,
   assert,
   each,
@@ -459,6 +513,7 @@ import {
   isNumber,
   isString,
   isSymbol,
+  meta,
   nullable,
   oneOf,
   optional,
@@ -471,6 +526,7 @@ import {
 
 Members:
 
+- `describe(constraint)` - returns a stable recursive machine-readable descriptor for built-in constraints;
 - `assert(predicate, meta, constraints?)` - low-level assertion factory;
 - `discriminatedUnion(key, variants)` - validates tagged object variants via a discriminator field;
 - `each(constraints)` - validates each array item and fails on non-array values;
@@ -485,6 +541,7 @@ Members:
 - `isNumber`;
 - `isString`;
 - `isSymbol`;
+- `meta(constraint, metadata)` - returns a cloned constraint annotated with machine-readable metadata;
 - `nullable(constraints)` - accepts `null` or validates the nested constraints;
 - `nullish(constraints)` - accepts `null` or `undefined` or validates the nested constraints;
 - `oneOf(values, options?)`.

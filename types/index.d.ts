@@ -78,6 +78,99 @@ export type ViolationTreeNode<V extends Violation = Violation> = {
 /** Standard entrypoint for wrapping `Violation[]` into a collection utility API. */
 export declare const collection: <V extends Violation>(violations: readonly V[]) => ViolationCollection<V>
 
+/** Read-only machine-readable metadata attached to a constraint. */
+export type ConstraintMetadata = Readonly<Record<string, unknown>>
+
+/** Public descriptor entry for additional assertion-level checks. */
+export interface AssertionDescriptorConstraint {
+  readonly code: string;
+  readonly args: readonly unknown[]
+}
+
+/** Shared descriptor shape returned by `describe(...)`. */
+export interface ConstraintDescriptorBase<K extends string = string> {
+  readonly kind: K;
+  readonly metadata?: ConstraintMetadata
+}
+
+/** Descriptor for leaf assertions created with `assert(...)` or compatible custom assertions. */
+export interface AssertionDescriptor extends ConstraintDescriptorBase<'assertion'> {
+  readonly name: string;
+  readonly bail: boolean;
+  readonly constraints: readonly AssertionDescriptorConstraint[]
+}
+
+/** Generic fallback descriptor for custom validators without structural instrumentation. */
+export interface ValidatorDescriptor extends ConstraintDescriptorBase<'validator'> {}
+
+/** Descriptor for sequential arrays of constraints used in a single slot. */
+export interface AllOfConstraintDescriptor extends ConstraintDescriptorBase<'allOf'> {
+  readonly constraints: readonly ConstraintDescriptor[]
+}
+
+/** Descriptor for wrapper combinators such as `optional(...)`. */
+export interface WrapperConstraintDescriptor<
+  K extends 'optional' | 'nullable' | 'nullish' = 'optional' | 'nullable' | 'nullish',
+> extends ConstraintDescriptorBase<K> {
+  readonly child: ConstraintDescriptor
+}
+
+/** Descriptor for `each(...)`. */
+export interface EachConstraintDescriptor extends ConstraintDescriptorBase<'each'> {
+  readonly item: ConstraintDescriptor
+}
+
+/** Descriptor for `tuple(...)`. */
+export interface TupleConstraintDescriptor extends ConstraintDescriptorBase<'tuple'> {
+  readonly items: readonly ConstraintDescriptor[]
+}
+
+/** Descriptor for `union(...)`. */
+export interface UnionConstraintDescriptor extends ConstraintDescriptorBase<'union'> {
+  readonly branches: readonly ConstraintDescriptor[]
+}
+
+/** Descriptor for `record(...)`. */
+export interface RecordConstraintDescriptor extends ConstraintDescriptorBase<'record'> {
+  readonly values: ConstraintDescriptor
+}
+
+/** Descriptor for `discriminatedUnion(...)`. */
+export interface DiscriminatedUnionConstraintDescriptor extends ConstraintDescriptorBase<'discriminatedUnion'> {
+  readonly key: PropertyKey;
+  readonly variants: Readonly<Record<PropertyKey, ConstraintDescriptor>>
+}
+
+/** Machine-readable summary of object-level rules registered on a shape. */
+export type ObjectShapeRuleDescriptor =
+  | {
+    readonly kind: 'refine'
+  }
+  | {
+    readonly kind: 'fieldsMatch';
+    readonly selectors: readonly [ObjectShapeFieldSelector, ObjectShapeFieldSelector]
+  }
+
+/** Descriptor for `shape(...)`. */
+export interface ShapeConstraintDescriptor extends ConstraintDescriptorBase<'shape'> {
+  readonly unknownKeys: UnknownKeysMode;
+  readonly fields: Readonly<Record<PropertyKey, ConstraintDescriptor>>;
+  readonly rules: readonly ObjectShapeRuleDescriptor[]
+}
+
+/** Stable machine-readable description of a constraint tree. */
+export type ConstraintDescriptor =
+  | AssertionDescriptor
+  | AllOfConstraintDescriptor
+  | ValidatorDescriptor
+  | WrapperConstraintDescriptor
+  | EachConstraintDescriptor
+  | TupleConstraintDescriptor
+  | UnionConstraintDescriptor
+  | RecordConstraintDescriptor
+  | DiscriminatedUnionConstraintDescriptor
+  | ShapeConstraintDescriptor
+
 /**
  * Extra checker pipeline for an assertion.
  *
@@ -206,6 +299,12 @@ export type ValidationTuple<T> = ValidationSuccess<T> | ValidationFailure
 
 /** Alias for `ValidationTuple<T>`. */
 export type ValidationResult<T> = ValidationTuple<T>
+
+/** Attaches read-only metadata to a constraint without changing validation semantics. */
+export declare const meta: <const C extends Constraint, const M extends ConstraintMetadata>(constraint: C, metadata: M) => C
+
+/** Returns a stable machine-readable description of a constraint tree. */
+export declare const describe: <const C extends Constraint>(constraint: C) => ConstraintDescriptor
 
 /**
  * Composed validator used by recursive helpers such as `shape(...)` and `each(...)`.

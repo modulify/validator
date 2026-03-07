@@ -6,7 +6,9 @@ import {
   nullable,
   nullish,
   optional,
+  record,
   shape,
+  tuple,
 } from '@/combinators'
 import {
   hasLength,
@@ -253,6 +255,62 @@ describe('structural combinators', () => {
       value: { name: 'tooLong' },
       path: [],
       violates: { kind: 'validator', name: 'each', code: 'type.array', args: [] },
+    }]])
+  })
+
+  test('tuple validates fixed positions', () => {
+    expect(validate.sync(['admin', 3], tuple([exact('admin'), isNumber]))).toEqual([true, ['admin', 3], []])
+  })
+
+  test('tuple reports length mismatches before nested validation', () => {
+    expect(validate.sync(['admin'], tuple([exact('admin'), isNumber]))).toEqual([false, ['admin'], [{
+      value: ['admin'],
+      path: [],
+      violates: { kind: 'validator', name: 'tuple', code: 'tuple.length', args: [2] },
+    }]])
+  })
+
+  test('tuple keeps positional paths for nested failures', () => {
+    expect(validate.sync(['user', '3'], tuple([exact('admin'), isNumber]))).toEqual([false, ['user', '3'], [{
+      value: 'user',
+      path: [0],
+      violates: assertionSubject('exact', 'value.exact', ['admin']),
+    }, {
+      value: '3',
+      path: [1],
+      violates: assertionSubject('isNumber', 'type.number'),
+    }]])
+  })
+
+  test('record validates dynamic keys with shared constraints', () => {
+    expect(validate.sync({
+      primary: 'admin',
+      backup: 'admin',
+    }, record(exact('admin')))).toEqual([true, {
+      primary: 'admin',
+      backup: 'admin',
+    }, []])
+  })
+
+  test('record keeps failing keys in violation paths', () => {
+    expect(validate.sync({
+      primary: 'admin',
+      backup: 'user',
+    }, record(exact('admin')))).toEqual([false, {
+      primary: 'admin',
+      backup: 'user',
+    }, [{
+      value: 'user',
+      path: ['backup'],
+      violates: assertionSubject('exact', 'value.exact', ['admin']),
+    }]])
+  })
+
+  test('record rejects non-record values', () => {
+    expect(validate.sync([], record(isString))).toEqual([false, [], [{
+      value: [],
+      path: [],
+      violates: { kind: 'validator', name: 'record', code: 'type.record', args: [] },
     }]])
   })
 })

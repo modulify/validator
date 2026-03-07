@@ -14,7 +14,9 @@ import {
   nullable,
   nullish,
   optional,
+  record,
   shape,
+  tuple,
 } from '@/combinators'
 import {
   isString,
@@ -76,5 +78,20 @@ describe('combinator types', () => {
       assertType<unknown>(validated)
       assertType<Violation[]>(violations)
     }
+  })
+
+  test('tuple preserves positional inference', () => {
+    const result = validate.sync(['admin', undefined], tuple([exact('admin'), optional(isString)]))
+
+    assertType<ValidationTuple<['admin', string | undefined]>>(result)
+  })
+
+  test('record wraps value inference for dynamic keys', () => {
+    const result = validate.sync({
+      primary: 'admin',
+      backup: 'admin',
+    }, record(exact('admin')))
+
+    assertType<ValidationTuple<Record<string, 'admin'>>>(result)
   })
 })

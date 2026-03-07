@@ -102,7 +102,7 @@ export function Not<T> (predicate: Predicate<T>): Predicate {
 
 
 export type Shape<T extends object> = {
-  [K in keyof T]: [Predicate<T[K]>, boolean]
+  [K in keyof T]: [Predicate<T[K]>, boolean] | Predicate<T[K]>
 }
 
 // Without `any` inference does not work properly
@@ -132,4 +132,3 @@ export const isShape = <S extends Shape<any>>(shape: S) => {
       || !required
   })
 }
-

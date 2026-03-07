@@ -368,6 +368,63 @@ Fields:
 
 The important part is that a violation is data, not presentation.
 
+## Violation Collections
+
+`Violation[]` stays the core result format, but you can now wrap it into a small utility layer for post-processing:
+
+```typescript
+import {
+  collection,
+  isString,
+  shape,
+  validate,
+} from '@modulify/validator'
+
+const [ok, validated, violations] = validate.sync({
+  profile: {
+    email: '',
+  },
+}, shape({
+  profile: shape({
+    email: isString,
+  }),
+}))
+
+const errors = collection(violations)
+
+const rootErrors = errors.at([])
+const emailErrors = errors.at(['profile', 'email'])
+const codes = emailErrors.map(violation => violation.violates.code)
+const tree = errors.tree()
+```
+
+`ViolationCollection` is intentionally thin:
+
+- `size` gives the current collection size;
+- it supports `for...of`, `.forEach(...)`, and `.map(...)`;
+- `.at(path)` does exact path matching and returns another `ViolationCollection`;
+- `.tree()` builds a nested machine-readable tree without serializing paths into strings.
+
+Path semantics:
+
+- `at([])` means root-level violations;
+- violations without `path` are treated as root-level by the collection utilities;
+- `at(['profile'])` does not include `['profile', 'email']`;
+- tree node paths are absolute;
+- intermediate tree nodes may exist even if they have no own violations, because they can still have descendant violations in `subtree`.
+
+Tree nodes have this shape:
+
+```typescript
+type ViolationTreeNode = {
+  path: readonly PropertyKey[]
+  self: ViolationCollection
+  subtree: ViolationCollection
+  children: ReadonlyMap<PropertyKey, ViolationTreeNode>
+  at(path: readonly PropertyKey[]): ViolationTreeNode | undefined
+}
+```
+
 ## Public API
 
 ### Root Exports
@@ -377,6 +434,8 @@ The root package exports:
 - `validate`;
 - `validate.sync`;
 - `matches.sync`;
+- `collection`;
+- `ViolationCollection`;
 - all exports from `./assertions`;
 - all exports from `./combinators`.
 

@@ -55,6 +55,29 @@ export type Violation<S extends ViolationSubject = ViolationSubject> = {
   violates: S;
 }
 
+/** Read-only utility wrapper for working with `Violation[]` results. */
+export declare class ViolationCollection<V extends Violation = Violation> implements Iterable<V> {
+  constructor(violations: readonly V[]);
+  readonly size: number;
+  [Symbol.iterator](): Iterator<V>;
+  forEach(callback: (violation: V, index: number, collection: ViolationCollection<V>) => void): void;
+  map<T>(callback: (violation: V, index: number, collection: ViolationCollection<V>) => T): T[];
+  at(path: readonly PropertyKey[]): ViolationCollection<V>;
+  tree(): ViolationTreeNode<V>;
+}
+
+/** Tree node built from a `ViolationCollection` for nested path traversal. */
+export type ViolationTreeNode<V extends Violation = Violation> = {
+  readonly path: readonly PropertyKey[];
+  readonly self: ViolationCollection<V>;
+  readonly subtree: ViolationCollection<V>;
+  readonly children: ReadonlyMap<PropertyKey, ViolationTreeNode<V>>;
+  at(path: readonly PropertyKey[]): ViolationTreeNode<V> | undefined;
+}
+
+/** Standard entrypoint for wrapping `Violation[]` into a collection utility API. */
+export declare const collection: <V extends Violation>(violations: readonly V[]) => ViolationCollection<V>
+
 /**
  * Extra checker pipeline for an assertion.
  *

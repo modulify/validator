@@ -25,7 +25,7 @@ export default <const C extends MaybeMany<Constraint>>(constraints: C): Validato
       : [[{
         value,
         path,
-        violates: { predicate: 'isArray', rule: 'Each', args: [] },
+        violates: { kind: 'validator', name: 'Each', code: 'type.array', args: [] },
       }]] as Validation<F>[]
   },
 })

@@ -15,6 +15,8 @@ export type {
   InferConstraints,
   ValidationFailure,
   ValidationSuccess,
+  ViolationKind,
+  ViolationSubject,
   ValidationTuple,
   ValidationResult,
   Validator,
@@ -119,7 +121,7 @@ async function settle (value: unknown, path: PropertyKey[], validations: Promise
       violations.push({
         value,
         path,
-        violates: { predicate: 'settle', rule: 'reject', args: [result.reason] },
+        violates: { kind: 'runtime', name: 'validate', code: 'runtime.rejection', args: [result.reason] },
       })
     }
   })

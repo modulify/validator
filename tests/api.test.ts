@@ -15,6 +15,8 @@ import {
 
 const expectString = <T extends string>(value: T) => value
 const expectProfile = <T extends { name: string; tags: string[] }>(value: T) => value
+const assertionSubject = (name: string, code: string, args: unknown[] = []) => ({ kind: 'assertion', name, code, args })
+const validatorSubject = (name: string, code: string, args: unknown[] = []) => ({ kind: 'validator', name, code, args })
 
 describe('matches.sync', () => {
   test('narrows successful sync validation', () => {
@@ -70,11 +72,7 @@ describe('validate tuple API', () => {
     expect(violations).toEqual([{
       value: 'ts',
       path: ['tags'],
-      violates: {
-        predicate: 'isArray',
-        rule: 'Each',
-        args: [],
-      },
+      violates: validatorSubject('Each', 'type.array'),
     }])
   })
 
@@ -109,11 +107,7 @@ describe('validate tuple API', () => {
       expect(violations).toEqual([{
         value: 1,
         path: ['tags', 0],
-        violates: {
-          predicate: 'isString',
-          rule: 'isString',
-          args: [],
-        },
+        violates: assertionSubject('isString', 'type.string'),
       }])
     }
   })

@@ -38,7 +38,7 @@ export default <const D extends Descriptor>(descriptor: D): Validator<InferDescr
       : [[{
         value,
         path,
-        violates: { predicate: 'isRecord', rule: 'HasProperties', args: [] },
+        violates: { kind: 'validator', name: 'HasProperties', code: 'type.record', args: [] },
       }]] as Validation<F>[],
   }
 }

@@ -25,18 +25,18 @@ export { assert }
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 type Defined = {} | null
 
-export const isBoolean = assert(_isBoolean, { name: 'isBoolean', bail: true })
-export const isDate = assert(_isDate, { name: 'isDate', bail: true })
+export const isBoolean = assert(_isBoolean, { name: 'isBoolean', bail: true, code: 'type.boolean' })
+export const isDate = assert(_isDate, { name: 'isDate', bail: true, code: 'type.date' })
 export const isDefined = assert((value: unknown): value is Defined => value !== undefined, {
   name: 'isDefined',
   bail: true,
-  rule: 'undefined',
+  code: 'value.defined',
 })
-export const isEmail = assert(_isEmail, { name: 'isEmail', bail: true })
-export const isNull = assert(_isNull, { name: 'isNull', bail: true })
-export const isNumber = assert(_isNumber, { name: 'isNumber', bail: true })
-export const isString = assert(_isString, { name: 'isString', bail: true })
-export const isSymbol = assert(_isSymbol, { name: 'isSymbol', bail: true })
+export const isEmail = assert(_isEmail, { name: 'isEmail', bail: true, code: 'string.email' })
+export const isNull = assert(_isNull, { name: 'isNull', bail: true, code: 'type.null' })
+export const isNumber = assert(_isNumber, { name: 'isNumber', bail: true, code: 'type.number' })
+export const isString = assert(_isString, { name: 'isString', bail: true, code: 'type.string' })
+export const isSymbol = assert(_isSymbol, { name: 'isSymbol', bail: true, code: 'type.symbol' })
 
 export const hasLength = ({
   exact = null,
@@ -53,17 +53,17 @@ export const hasLength = ({
 } = {}) => {
   const constraints: AssertionConstraint<string | unknown[]>[] = []
 
-  if (exact !== null) constraints.push([length, isEqual, 'exact', exact])
-  if (max !== null) constraints.push([length, isLte, 'max', max])
-  if (min !== null) constraints.push([length, isGte, 'min', min])
-  if (range !== null) constraints.push([length, inRange, 'range', range])
+  if (exact !== null) constraints.push([length, isEqual, 'length.exact', exact])
+  if (max !== null) constraints.push([length, isLte, 'length.max', max])
+  if (min !== null) constraints.push([length, isGte, 'length.min', min])
+  if (range !== null) constraints.push([length, inRange, 'length.range', range])
 
   return assert(
     (value: unknown): value is string | unknown[] => isArray(value) || _isString(value),
     {
       name: 'hasLength',
       bail,
-      rule: 'unsupported',
+      code: 'length.unsupported-type',
     },
     constraints
   )
@@ -84,6 +84,7 @@ export const oneOf = <Actual = unknown>(
   return assert((value: unknown): value is Actual => haystack.some(item => equalTo(item, value)), {
     name: 'oneOf',
     bail,
+    code: 'value.one-of',
     args: [haystack],
   })
 }

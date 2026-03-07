@@ -148,6 +148,22 @@ export type Validation<F extends ValidateLike> = F extends Validate
 /** Controls how object shapes handle keys missing from the descriptor. */
 export type UnknownKeysMode = 'passthrough' | 'strict'
 
+/** Field selector accepted by shape helpers that can point to the current level or a nested path. */
+export type ObjectShapeFieldSelector = PropertyKey | readonly PropertyKey[]
+
+/** Machine-readable issue returned by an object-level shape refinement. */
+export type ObjectShapeRefinementIssue<A extends unknown[] = unknown[]> = {
+  path?: PropertyKey[];
+  code: string;
+  args?: A;
+  value?: unknown;
+}
+
+/** Sync object-level rule that runs after the base shape has validated successfully. */
+export type ObjectShapeRefinement<T> = (
+  value: T
+) => MaybeMany<ObjectShapeRefinementIssue | null | undefined> | null | undefined
+
 /** Successful `validate(...)` tuple with typed `validated` value. */
 export type ValidationSuccess<T> = [ok: true, validated: T, violations: []]
 
@@ -217,6 +233,8 @@ export interface ObjectShape<
 > extends Validator<InferObjectDescriptor<D>> {
   readonly descriptor: D;
   readonly unknownKeys: M;
+  refine(refinement: ObjectShapeRefinement<InferObjectDescriptor<D>>): ObjectShape<D, M>;
+  fieldsMatch<const K extends readonly [ObjectShapeFieldSelector, ObjectShapeFieldSelector]>(keys: K): ObjectShape<D, M>;
   strict(): ObjectShape<D, 'strict'>;
   passthrough(): ObjectShape<D, 'passthrough'>;
   pick<const K extends readonly (keyof D)[]>(keys: K): ObjectShape<Pick<D, K[number]>, M>;

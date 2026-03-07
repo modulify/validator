@@ -229,4 +229,46 @@ describe('combinator types', () => {
       confirmPassword: 'secret',
     }, confirmedRegistration))
   })
+
+  test('fieldsMatch also accepts nested path selectors without changing inferred shape types', () => {
+    const registration = shape({
+      password: isString,
+      confirm: shape({
+        password: isString,
+      }),
+    }).fieldsMatch([['password'], ['confirm', 'password']])
+
+    assertType<ValidationTuple<{
+      password: string;
+      confirm: {
+        password: string;
+      };
+    }>>(validate.sync({
+      password: 'secret',
+      confirm: {
+        password: 'secret',
+      },
+    }, registration))
+  })
+
+  test('fieldsMatch also accepts mixed top-level and nested selectors', () => {
+    const registration = shape({
+      password: isString,
+      confirm: shape({
+        password: isString,
+      }),
+    }).fieldsMatch(['password', ['confirm', 'password']])
+
+    assertType<ValidationTuple<{
+      password: string;
+      confirm: {
+        password: string;
+      };
+    }>>(validate.sync({
+      password: 'secret',
+      confirm: {
+        password: 'secret',
+      },
+    }, registration))
+  })
 })

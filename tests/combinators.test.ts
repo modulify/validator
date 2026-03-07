@@ -762,6 +762,56 @@ describe('shape object api', () => {
     }]])
   })
 
+  test('fieldsMatch accepts nested paths for matching values from different object levels', () => {
+    const registration = shape({
+      password: isString,
+      confirm: shape({
+        password: isString,
+      }),
+    }).fieldsMatch([['password'], ['confirm', 'password']])
+
+    expect(validate.sync({
+      password: 'secret',
+      confirm: {
+        password: 'different',
+      },
+    }, registration)).toEqual([false, {
+      password: 'secret',
+      confirm: {
+        password: 'different',
+      },
+    }, [{
+      value: 'different',
+      path: ['confirm', 'password'],
+      violates: validatorSubject('shape', 'shape.fields.mismatch', [[['password'], ['confirm', 'password']]]),
+    }]])
+  })
+
+  test('fieldsMatch allows mixing a top-level key selector with a nested path selector', () => {
+    const registration = shape({
+      password: isString,
+      confirm: shape({
+        password: isString,
+      }),
+    }).fieldsMatch(['password', ['confirm', 'password']])
+
+    expect(validate.sync({
+      password: 'secret',
+      confirm: {
+        password: 'different',
+      },
+    }, registration)).toEqual([false, {
+      password: 'secret',
+      confirm: {
+        password: 'different',
+      },
+    }, [{
+      value: 'different',
+      path: ['confirm', 'password'],
+      violates: validatorSubject('shape', 'shape.fields.mismatch', [['password', ['confirm', 'password']]]),
+    }]])
+  })
+
   test('strict and passthrough keep object-level rules, while structural transforms drop them', () => {
     const confirmed = shape({
       password: isString,

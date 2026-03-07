@@ -9,6 +9,10 @@ import type {
 
 export * from '@/assertions'
 export * from '@/combinators'
+export {
+  collection,
+  ViolationCollection,
+} from '@/violations'
 export type {
   Constraint,
   InferConstraint,
@@ -20,6 +24,7 @@ export type {
   ValidationSuccess,
   ViolationKind,
   ViolationSubject,
+  ViolationTreeNode,
   ValidationTuple,
   ValidationResult,
   Validator,

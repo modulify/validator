@@ -10,6 +10,7 @@ import {
 } from 'vitest'
 
 import {
+  discriminatedUnion,
   exact,
   nullable,
   nullish,
@@ -17,8 +18,10 @@ import {
   record,
   shape,
   tuple,
+  union,
 } from '@/combinators'
 import {
+  isNumber,
   isString,
   matches,
   validate,
@@ -93,5 +96,53 @@ describe('combinator types', () => {
     }, record(exact('admin')))
 
     assertType<ValidationTuple<Record<string, 'admin'>>>(result)
+  })
+
+  test('union combines branch inference into a union type', () => {
+    const result = validate.sync('admin', union([exact('admin'), isNumber]))
+
+    assertType<ValidationTuple<'admin' | number>>(result)
+  })
+
+  test('union preserves object variant inference', () => {
+    const result = validate.sync({
+      kind: 'team',
+      size: undefined,
+    }, union([
+      shape({
+        kind: exact('user'),
+        name: isString,
+      }),
+      shape({
+        kind: exact('team'),
+        size: optional(isString),
+      }),
+    ]))
+
+    assertType<ValidationTuple<
+      | { kind: 'user'; name: string }
+      | { kind: 'team'; size: string | undefined }
+    >>(result)
+  })
+
+  test('discriminatedUnion preserves tagged object inference', () => {
+    const result = validate.sync({
+      kind: 'team',
+      size: undefined,
+    }, discriminatedUnion('kind', {
+      user: shape({
+        kind: exact('user'),
+        name: isString,
+      }),
+      team: shape({
+        kind: exact('team'),
+        size: optional(isString),
+      }),
+    }))
+
+    assertType<ValidationTuple<
+      | { kind: 'user'; name: string }
+      | { kind: 'team'; size: string | undefined }
+    >>(result)
   })
 })

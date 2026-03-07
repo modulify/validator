@@ -263,6 +263,7 @@ Available from:
 
 ```typescript
 import {
+  discriminatedUnion,
   assert,
   each,
   shape,
@@ -280,12 +281,16 @@ import {
   oneOf,
   optional,
   nullish,
+  record,
+  tuple,
+  union,
 } from '@modulify/validator'
 ```
 
 Members:
 
 - `assert(predicate, meta, constraints?)` - low-level assertion factory;
+- `discriminatedUnion(key, variants)` - validates tagged object variants via a discriminator field;
 - `each(constraints)` - validates each array item and fails on non-array values;
 - `shape(descriptor)` - validates object properties recursively;
 - `exact(value)` - exact value assertion built on top of predicate semantics;
@@ -302,6 +307,9 @@ Members:
 - `nullish(constraints)` - accepts `null` or `undefined` or validates the nested constraints;
 - `oneOf(values, options?)`.
 - `optional(constraints)` - accepts `undefined` or validates the nested constraints.
+- `record(constraints)` - validates dynamic object keys against shared constraints;
+- `tuple([constraints...])` - validates fixed-length positional tuples.
+- `union([constraints...])` - validates a value against multiple alternative branches.
 
 ### Validate Result
 

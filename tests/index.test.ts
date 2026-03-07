@@ -1,4 +1,7 @@
-import type { Assertion } from '~types'
+import type {
+  Assertion,
+  ViolationSubject,
+} from '~types'
 
 import {
   describe,
@@ -23,6 +26,9 @@ import { validate } from '@/index'
 
 const valid = <T>(value: T) => [true, value, []]
 const invalid = <T>(value: T, violations: unknown[]) => [false, value, violations]
+const assertionSubject = (name: string, code: string, args: unknown[] = []): ViolationSubject => ({ kind: 'assertion', name, code, args })
+const validatorSubject = (name: string, code: string, args: unknown[] = []): ViolationSubject => ({ kind: 'validator', name, code, args })
+const runtimeSubject = (name: string, code: string, args: unknown[] = []): ViolationSubject => ({ kind: 'runtime', name, code, args })
 
 const createAsyncAssertion = (
   name: string,
@@ -81,11 +87,7 @@ describe('validate', () => {
       expect(await validate({}, constraint)).toEqual(invalid({}, [{
         value: undefined,
         path: ['form'],
-        violates: {
-          predicate: 'isDefined',
-          rule: 'undefined',
-          args: [],
-        },
+        violates: assertionSubject('isDefined', 'value.defined'),
       }]))
 
       expect(await validate({
@@ -101,19 +103,11 @@ describe('validate', () => {
       }, [{
         value: '',
         path: ['form', 'nickname'],
-        violates: {
-          predicate: 'hasLength',
-          rule: 'min',
-          args: [4],
-        },
+        violates: assertionSubject('hasLength', 'length.min', [4]),
       }, {
         value: '',
         path: ['form', 'password'],
-        violates: {
-          predicate: 'hasLength',
-          rule: 'min',
-          args: [6],
-        },
+        violates: assertionSubject('hasLength', 'length.min', [6]),
       }]))
     })
 
@@ -126,11 +120,7 @@ describe('validate', () => {
       }))).toEqual(invalid('', [{
         value: '',
         path: [],
-        violates: {
-          predicate: 'isRecord',
-          rule: 'HasProperties',
-          args: [],
-        },
+        violates: validatorSubject('HasProperties', 'type.record'),
       }]))
     })
   })
@@ -150,19 +140,11 @@ describe('validate', () => {
       ], [{
         value: '',
         path: [0, 'name'],
-        violates: {
-          predicate: 'hasLength',
-          rule: 'min',
-          args: [4],
-        },
+        violates: assertionSubject('hasLength', 'length.min', [4]),
       }, {
         value: 'tooLong',
         path: [1, 'name'],
-        violates: {
-          predicate: 'hasLength',
-          rule: 'max',
-          args: [6],
-        },
+        violates: assertionSubject('hasLength', 'length.max', [6]),
       }]))
     })
 
@@ -174,11 +156,7 @@ describe('validate', () => {
       ]))).toEqual(invalid({ name: 'tooLong' }, [{
         value: { name: 'tooLong' },
         path: [],
-        violates: {
-          predicate: 'isArray',
-          rule: 'Each',
-          args: [],
-        },
+        violates: validatorSubject('Each', 'type.array'),
       }]))
     })
   })
@@ -187,11 +165,7 @@ describe('validate', () => {
     expect(await validate('', oneOf(['filled', 'outline', 'tonal']))).toEqual(invalid('', [{
       value: '',
       path: [],
-      violates: {
-        predicate: 'oneOf',
-        rule: 'oneOf',
-        args: [['filled', 'outline', 'tonal']],
-      },
+      violates: assertionSubject('oneOf', 'value.one-of', [['filled', 'outline', 'tonal']]),
     }]))
   })
 
@@ -235,11 +209,7 @@ describe('validate', () => {
     }))).toEqual(invalid({}, [{
       value: undefined,
       path: ['form'],
-      violates: {
-        predicate: '_isDefined.bail=true',
-        rule: '_isDefined.bail=true',
-        args: [],
-      },
+      violates: assertionSubject('_isDefined.bail=true', '_isDefined.bail=true'),
     }]))
 
     expect(await validate({}, HasProperties({
@@ -253,19 +223,11 @@ describe('validate', () => {
     }))).toEqual(invalid({}, [{
       value: undefined,
       path: ['form'],
-      violates: {
-        predicate: '_isDefined.bail=false',
-        rule: '_isDefined.bail=false',
-        args: [],
-      },
+      violates: assertionSubject('_isDefined.bail=false', '_isDefined.bail=false'),
     }, {
       value: undefined,
       path: ['form'],
-      violates: {
-          predicate: 'isRecord',
-          rule: 'HasProperties',
-          args: [],
-        },
+      violates: validatorSubject('HasProperties', 'type.record'),
     }]))
   })
 
@@ -273,11 +235,7 @@ describe('validate', () => {
     expect(await validate('', createAsyncAssertion('rejectingAssertion', async () => Promise.reject('test rejection')))).toEqual(invalid('', [{
       value: '',
       path: [],
-      violates: {
-        predicate: 'settle',
-        rule: 'reject',
-        args: ['test rejection'],
-      },
+      violates: runtimeSubject('validate', 'runtime.rejection', ['test rejection']),
     }]))
   })
 
@@ -285,21 +243,13 @@ describe('validate', () => {
     expect(await validate('', [
       createAsyncAssertion('asyncBail', async (value: unknown) => ({
         value,
-        violates: {
-          predicate: 'asyncBail',
-          rule: 'asyncBail',
-          args: [],
-        },
+        violates: assertionSubject('asyncBail', 'asyncBail'),
       }), true),
       hasLength({ min: 2 }),
     ])).toEqual(invalid('', [{
       value: '',
       path: [],
-      violates: {
-        predicate: 'asyncBail',
-        rule: 'asyncBail',
-        args: [],
-      },
+      violates: assertionSubject('asyncBail', 'asyncBail'),
     }]))
   })
 
@@ -307,29 +257,17 @@ describe('validate', () => {
     expect(await validate('', [
       createAsyncAssertion('asyncNoBail', async (value: unknown) => ({
         value,
-        violates: {
-          predicate: 'asyncNoBail',
-          rule: 'asyncNoBail',
-          args: [],
-        },
+        violates: assertionSubject('asyncNoBail', 'asyncNoBail'),
       })),
       hasLength({ min: 2 }),
     ])).toEqual(invalid('', [{
       value: '',
       path: [],
-      violates: {
-        predicate: 'asyncNoBail',
-        rule: 'asyncNoBail',
-        args: [],
-      },
+      violates: assertionSubject('asyncNoBail', 'asyncNoBail'),
     }, {
       value: '',
       path: [],
-      violates: {
-        predicate: 'hasLength',
-        rule: 'min',
-        args: [2],
-      },
+      violates: assertionSubject('hasLength', 'length.min', [2]),
     }]))
   })
 
@@ -340,11 +278,7 @@ describe('validate', () => {
     ])).toEqual(invalid('', [{
       value: '',
       path: [],
-      violates: {
-        predicate: 'hasLength',
-        rule: 'min',
-        args: [2],
-      },
+      violates: assertionSubject('hasLength', 'length.min', [2]),
     }]))
   })
 
@@ -355,11 +289,7 @@ describe('validate', () => {
     ])).toEqual(invalid('', [{
       value: '',
       path: [],
-      violates: {
-        predicate: 'hasLength',
-        rule: 'min',
-        args: [2],
-      },
+      violates: assertionSubject('hasLength', 'length.min', [2]),
     }]))
   })
 })
@@ -392,11 +322,7 @@ describe('validate.sync', () => {
       expect(validate.sync({}, constraint)).toEqual(invalid({}, [{
         value: undefined,
         path: ['form'],
-        violates: {
-          predicate: 'isDefined',
-          rule: 'undefined',
-          args: [],
-        },
+        violates: assertionSubject('isDefined', 'value.defined'),
       }]))
 
       expect(validate.sync({
@@ -412,19 +338,11 @@ describe('validate.sync', () => {
       }, [{
         value: '',
         path: ['form', 'nickname'],
-        violates: {
-          predicate: 'hasLength',
-          rule: 'min',
-          args: [4],
-        },
+        violates: assertionSubject('hasLength', 'length.min', [4]),
       }, {
         value: '',
         path: ['form', 'password'],
-        violates: {
-          predicate: 'hasLength',
-          rule: 'min',
-          args: [6],
-        },
+        violates: assertionSubject('hasLength', 'length.min', [6]),
       }]))
     })
 
@@ -437,11 +355,7 @@ describe('validate.sync', () => {
       }))).toEqual(invalid('', [{
         value: '',
         path: [],
-        violates: {
-          predicate: 'isRecord',
-          rule: 'HasProperties',
-          args: [],
-        },
+        violates: validatorSubject('HasProperties', 'type.record'),
       }]))
     })
   })
@@ -461,19 +375,11 @@ describe('validate.sync', () => {
       ], [{
         value: '',
         path: [0, 'name'],
-        violates: {
-          predicate: 'hasLength',
-          rule: 'min',
-          args: [4],
-        },
+        violates: assertionSubject('hasLength', 'length.min', [4]),
       }, {
         value: 'tooLong',
         path: [1, 'name'],
-        violates: {
-          predicate: 'hasLength',
-          rule: 'max',
-          args: [6],
-        },
+        violates: assertionSubject('hasLength', 'length.max', [6]),
       }]))
     })
 
@@ -485,11 +391,7 @@ describe('validate.sync', () => {
       ]))).toEqual(invalid({ name: 'tooLong' }, [{
         value: { name: 'tooLong' },
         path: [],
-        violates: {
-          predicate: 'isArray',
-          rule: 'Each',
-          args: [],
-        },
+        violates: validatorSubject('Each', 'type.array'),
       }]))
     })
   })
@@ -498,22 +400,14 @@ describe('validate.sync', () => {
     expect(validate.sync('', oneOf(['filled', 'outline', 'tonal']))).toEqual(invalid('', [{
       value: '',
       path: [],
-      violates: {
-        predicate: 'oneOf',
-        rule: 'oneOf',
-        args: [['filled', 'outline', 'tonal']],
-      },
+      violates: assertionSubject('oneOf', 'value.one-of', [['filled', 'outline', 'tonal']]),
     }]))
   })
 
   test('throws error if found async validator', () => {
     const asyncAssertion = createAsyncAssertion('__async__', async (value: unknown) => ({
       value,
-      violates: {
-        predicate: '__async__',
-        rule: '__async__',
-        args: [],
-      },
+      violates: assertionSubject('__async__', '__async__'),
     }))
 
     expect(() => {

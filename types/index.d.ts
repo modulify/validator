@@ -23,16 +23,21 @@ export type Predicate<T = unknown> = (value: unknown) => value is T
 
 /** Checker used by assertion constraints after a value is extracted. */
 export type Checker<T, A extends unknown[] = unknown[]> = (value: T, ...args: A) => boolean
-/** Extracts checker arguments from a checker function type. */
-export type CheckerArguments<C> = C extends (value: unknown, ...args: infer A) => unknown ? A : never
 
 /** Extracts a derived value from the original input before a checker runs. */
 export type Extractor<T, V> = (value: T) => V
 
+/** Origin layer that produced a violation. */
+export type ViolationKind = 'assertion' | 'validator' | 'runtime'
+
 /** Machine-readable description of a validation failure. */
-export type ViolationSubject<T extends unknown[] = unknown[]> = {
-  predicate: string;
-  rule: string;
+export type ViolationSubject<
+  T extends unknown[] = unknown[],
+  K extends ViolationKind = ViolationKind
+> = {
+  kind: K;
+  name: string;
+  code: string;
   args: T;
 }
 
@@ -42,7 +47,7 @@ export type ViolationSubject<T extends unknown[] = unknown[]> = {
  * `path` points to the nested property or array index that failed.
  *
  * Example:
- * `violation.violates.rule === 'min'`
+ * `violation.violates.code === 'length.min'`
  */
 export type Violation<S extends ViolationSubject = ViolationSubject> = {
   value: unknown;
@@ -54,17 +59,17 @@ export type Violation<S extends ViolationSubject = ViolationSubject> = {
  * Extra checker pipeline for an assertion.
  *
  * Example:
- * `type LengthConstraint = AssertionConstraint<string, number, [min: number], 'min'>`
+ * `type LengthConstraint = AssertionConstraint<string, number, [min: number], 'length.min'>`
  */
 export type AssertionConstraint<
   T = unknown,
   V = unknown,
   A extends unknown[] = unknown[],
-  N extends string = string
+  C extends string = string
 > = [
   Extractor<T, V>,
   Checker<V, A>,
-  N,
+  C,
   ...A
 ]
 
@@ -147,7 +152,7 @@ export type ValidationSuccess<T> = [ok: true, validated: T, violations: []]
 export type ValidationFailure = [ok: false, validated: unknown, violations: Violation[]]
 
 /**
- * Result tuple returned by `validate(...)` and `validate.sync(...)`.
+ * The result tuple returned by `validate(...)` and `validate.sync(...)`.
  *
  * Example:
  * `const [ok, validated, violations] = await validate(value, schema)`

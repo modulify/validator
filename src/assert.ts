@@ -7,7 +7,7 @@ import type {
 type AssertMeta = {
   name: string;
   bail: boolean;
-  rule?: string;
+  code?: string;
   args?: unknown[];
 }
 
@@ -21,20 +21,22 @@ export const assert = <T, C extends AssertionConstraint[] = AssertionConstraint[
       return {
         value,
         violates: {
-          predicate: meta.name,
-          rule: meta.rule ?? meta.name,
+          kind: 'assertion',
+          name: meta.name,
+          code: meta.code ?? meta.name,
           args: meta.args ?? [],
         },
       }
     }
 
-    for (const [extract, check, rule, ...args] of constraints) {
+    for (const [extract, check, code, ...args] of constraints) {
       if (!check(extract(value), ...args)) {
         return {
           value,
           violates: {
-            predicate: meta.name,
-            rule,
+            kind: 'assertion',
+            name: meta.name,
+            code,
             args,
           },
         }

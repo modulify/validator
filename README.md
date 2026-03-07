@@ -53,7 +53,7 @@ Instead of generating a text message, an assertion returns data that describes:
 
 - what failed;
 - where it failed;
-- which rule failed;
+- which semantic code failed;
 - which arguments or bounds were involved.
 
 That keeps presentation outside the library.
@@ -218,8 +218,9 @@ const violation: Violation = {
   value: '',
   path: ['form', 'nickname'],
   violates: {
-    predicate: 'hasLength',
-    rule: 'min',
+    kind: 'assertion',
+    name: 'hasLength',
+    code: 'length.min',
     args: [4],
   },
 }
@@ -229,9 +230,10 @@ Fields:
 
 - `value` - the value that failed validation;
 - `path` - full path to the value inside a nested structure;
-- `violates.predicate` - which assertion or internal check produced the violation;
-- `violates.rule` - which specific rule failed;
-- `violates.args` - structured metadata for that failed rule.
+- `violates.kind` - which layer produced the violation: assertion, validator, or runtime;
+- `violates.name` - which assertion or validator produced it;
+- `violates.code` - the semantic failure code;
+- `violates.args` - structured metadata for that failure.
 
 The important part is that a violation is data, not presentation.
 

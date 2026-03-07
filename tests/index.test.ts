@@ -1,4 +1,4 @@
-import type { Validator } from '~types'
+import type { Assertion } from '~types'
 
 import {
   describe,
@@ -12,23 +12,52 @@ import {
 } from '@/runners'
 
 import {
-  HasLength,
-  IsDefined,
-  IsString,
-  OneOf,
+  assert,
+  hasLength,
+  isDefined,
+  isString,
+  oneOf,
 } from '@/assertions'
 
 import { validate } from '@/index'
 
+const createAsyncAssertion = (
+  name: string,
+  handler: (value: unknown) => Promise<ReturnType<Assertion>>
+): Assertion => {
+  const assertion = (async (value: unknown) => handler(value)) as Assertion
+
+  Object.defineProperties(assertion, {
+    name: {
+      configurable: true,
+      value: name,
+    },
+    bail: {
+      enumerable: true,
+      value: false,
+    },
+    constraints: {
+      enumerable: true,
+      value: [],
+    },
+    check: {
+      enumerable: true,
+      value: (_value: unknown): _value is unknown => true,
+    },
+  })
+
+  return assertion
+}
+
 describe('validate', () => {
   describe('HasProperties', () => {
-    test('checks object\'s structure', async () => {
+    test('checks object structure', async () => {
       const constraint = HasProperties({
         form: [
-          IsDefined,
+          isDefined,
           HasProperties({
-            nickname: IsString.That(HasLength({ min: 4 })),
-            password: IsString.That(HasLength({ min: 6 })),
+            nickname: [isString, hasLength({ min: 4 })],
+            password: [isString, hasLength({ min: 6 })],
           }),
         ],
       })
@@ -43,8 +72,11 @@ describe('validate', () => {
       expect(await validate({}, constraint)).toEqual([{
         value: undefined,
         path: ['form'],
-        violates: '@modulify/validator/IsDefined',
-        reason: 'undefined',
+        violates: {
+          predicate: 'isDefined',
+          rule: 'undefined',
+          args: [],
+        },
       }])
 
       expect(await validate({
@@ -55,66 +87,36 @@ describe('validate', () => {
       }, constraint)).toEqual([{
         value: '',
         path: ['form', 'nickname'],
-        violates: '@modulify/validator/IsString',
-        reason: 'min',
-        meta: 4,
+        violates: {
+          predicate: 'hasLength',
+          rule: 'min',
+          args: [4],
+        },
       }, {
         value: '',
         path: ['form', 'password'],
-        violates: '@modulify/validator/IsString',
-        reason: 'min',
-        meta: 6,
+        violates: {
+          predicate: 'hasLength',
+          rule: 'min',
+          args: [6],
+        },
       }])
-
-      expect(await validate({
-        nickname: 'none',
-        password: 'qwerty',
-      }, [
-        Object.assign(async (value: unknown, path: PropertyKey[] = []) => {
-          if (IsDefined(value)) return null
-
-          return { value, path, violates: IsDefined.fqn }
-        }, {
-          fqn: IsDefined.fqn,
-          bail: false,
-        }) as Validator,
-        HasProperties({
-          nickname: IsString.That(HasLength({ min: 4 })),
-          password: IsString.That(HasLength({ min: 6 })),
-        }),
-      ])).toEqual([])
     })
 
-    test('doesn\'t check non-object values', async () => {
+    test('does not check non-object values', async () => {
       expect(await validate('', HasProperties({
         form: HasProperties({
-          nickname: IsString.That(HasLength({ min: 4 })),
-          password: IsString.That(HasLength({ min: 6 })),
+          nickname: [isString, hasLength({ min: 4 })],
+          password: [isString, hasLength({ min: 6 })],
         }),
       }))).toEqual([{
         value: '',
         path: [],
-        violates: '@modulify/validator/HasProperties',
-        reason: 'unsupported',
-      }])
-    })
-  })
-
-  describe('HasProperties & IsDefined', () => {
-    test('checks object\'s structure', async () => {
-      expect(await validate({}, HasProperties({
-        form: [
-          IsDefined,
-          HasProperties({
-            nickname: IsString.That(HasLength({ min: 4 })),
-            password: IsString.That(HasLength({ min: 6 })),
-          }),
-        ],
-      }))).toEqual([{
-        value: undefined,
-        path: ['form'],
-        violates: '@modulify/validator/IsDefined',
-        reason: 'undefined',
+        violates: {
+          predicate: 'isRecord',
+          rule: 'HasProperties',
+          args: [],
+        },
       }])
     })
   })
@@ -126,57 +128,64 @@ describe('validate', () => {
         { name: 'tooLong' },
       ], Each([
         HasProperties({
-          name: IsString.That(HasLength({ min: 4, max: 6 })),
+          name: [isString, hasLength({ min: 4, max: 6 })],
         }),
       ]))).toEqual([{
         value: '',
         path: [0, 'name'],
-        violates: '@modulify/validator/IsString',
-        reason: 'min',
-        meta: 4,
+        violates: {
+          predicate: 'hasLength',
+          rule: 'min',
+          args: [4],
+        },
       }, {
         value: 'tooLong',
         path: [1, 'name'],
-        violates: '@modulify/validator/IsString',
-        reason: 'max',
-        meta: 6,
+        violates: {
+          predicate: 'hasLength',
+          rule: 'max',
+          args: [6],
+        },
       }])
     })
 
     test('checks single value', async () => {
       expect(await validate({ name: 'tooLong' }, Each([
         HasProperties({
-          name: IsString.That(HasLength({ min: 4, max: 6 })),
+          name: [isString, hasLength({ min: 4, max: 6 })],
         }),
       ]))).toEqual([{
         value: 'tooLong',
         path: ['name'],
-        violates: '@modulify/validator/IsString',
-        reason: 'max',
-        meta: 6,
+        violates: {
+          predicate: 'hasLength',
+          rule: 'max',
+          args: [6],
+        },
       }])
     })
   })
 
-  test('OneOf', async () => {
-    expect(await validate('', OneOf(['filled', 'outline', 'tonal']))).toEqual([{
+  test('oneOf', async () => {
+    expect(await validate('', oneOf(['filled', 'outline', 'tonal']))).toEqual([{
       value: '',
       path: [],
-      violates: '@modulify/validator/OneOf',
-      meta: ['filled', 'outline', 'tonal'],
+      violates: {
+        predicate: 'oneOf',
+        rule: 'oneOf',
+        args: [['filled', 'outline', 'tonal']],
+      },
     }])
   })
 
   test('skips the rest constraints if the current one with bail flag fails', async () => {
-    const _IsDefined = ({ bail }: { bail: boolean }) => {
-      const fqn = '_IsDefined.bail=' + JSON.stringify(bail)
-
-      return Object.assign(async (value: unknown, path: PropertyKey[] = []) => {
-        if (IsDefined(value)) return null
-
-        return { value, path, violates: fqn }
-      }, { fqn, bail })
-    }
+    const makeDefined = ({ bail }: { bail: boolean }) => assert(
+      (value: unknown): value is Exclude<unknown, undefined> => value !== undefined,
+      {
+        name: `_isDefined.bail=${JSON.stringify(bail)}`,
+        bail,
+      }
+    )
 
     expect(await validate({
       form: {
@@ -185,71 +194,81 @@ describe('validate', () => {
       },
     }, HasProperties({
       form: [
-        _IsDefined({ bail: true }),
+        makeDefined({ bail: true }),
         HasProperties({
-          nickname: IsString.That(HasLength({ min: 4 })),
-          password: IsString.That(HasLength({ min: 6 })),
+          nickname: [isString, hasLength({ min: 4 })],
+          password: [isString, hasLength({ min: 6 })],
         }),
       ],
     }))).toEqual([])
 
     expect(await validate({}, HasProperties({
       form: [
-        _IsDefined({ bail: true }),
+        makeDefined({ bail: true }),
         HasProperties({
-          nickname: IsString.That(HasLength({ min: 4 })),
-          password: IsString.That(HasLength({ min: 6 })),
+          nickname: [isString, hasLength({ min: 4 })],
+          password: [isString, hasLength({ min: 6 })],
         }),
       ],
     }))).toEqual([{
       value: undefined,
       path: ['form'],
-      violates: '_IsDefined.bail=true',
+      violates: {
+        predicate: '_isDefined.bail=true',
+        rule: '_isDefined.bail=true',
+        args: [],
+      },
     }])
 
     expect(await validate({}, HasProperties({
       form: [
-        _IsDefined({ bail: false }),
+        makeDefined({ bail: false }),
         HasProperties({
-          nickname: IsString.That(HasLength({ min: 4 })),
-          password: IsString.That(HasLength({ min: 6 })),
+          nickname: [isString, hasLength({ min: 4 })],
+          password: [isString, hasLength({ min: 6 })],
         }),
       ],
     }))).toEqual([{
       value: undefined,
       path: ['form'],
-      violates: '_IsDefined.bail=false',
+      violates: {
+        predicate: '_isDefined.bail=false',
+        rule: '_isDefined.bail=false',
+        args: [],
+      },
     }, {
       value: undefined,
       path: ['form'],
-      violates: '@modulify/validator/HasProperties',
-      reason: 'unsupported',
+      violates: {
+        predicate: 'isRecord',
+        rule: 'HasProperties',
+        args: [],
+      },
     }])
   })
 
   test('returns special violation for rejected async validator', async () => {
-    expect(await validate('', Object.assign(async () => Promise.reject('test rejection'), {
-      fqn: 'This should not appear in the result',
-      bail: false,
-    }))).toEqual([{
+    expect(await validate('', createAsyncAssertion('rejectingAssertion', async () => Promise.reject('test rejection')))).toEqual([{
       value: '',
       path: [],
-      violates: '@modulify/validator',
-      reason: 'reject',
-      meta: 'test rejection',
+      violates: {
+        predicate: 'settle',
+        rule: 'reject',
+        args: ['test rejection'],
+      },
     }])
   })
 })
 
 describe('validate.sync', () => {
   describe('HasProperties', () => {
-    test('checks object\'s structure', () => {
+    test('checks object structure', () => {
       const constraint = HasProperties({
         form: [
-          IsDefined,
+          isDefined,
           HasProperties({
-            nickname: IsString.That(HasLength({ min: 4 })),
-            password: IsString.That(HasLength({ min: 6 })),
+            nickname: [isString, hasLength({ min: 4 })],
+            password: [isString, hasLength({ min: 6 })],
           }),
         ],
       })
@@ -264,8 +283,11 @@ describe('validate.sync', () => {
       expect(validate.sync({}, constraint)).toEqual([{
         value: undefined,
         path: ['form'],
-        violates: '@modulify/validator/IsDefined',
-        reason: 'undefined',
+        violates: {
+          predicate: 'isDefined',
+          rule: 'undefined',
+          args: [],
+        },
       }])
 
       expect(validate.sync({
@@ -276,48 +298,36 @@ describe('validate.sync', () => {
       }, constraint)).toEqual([{
         value: '',
         path: ['form', 'nickname'],
-        violates: '@modulify/validator/IsString',
-        reason: 'min',
-        meta: 4,
+        violates: {
+          predicate: 'hasLength',
+          rule: 'min',
+          args: [4],
+        },
       }, {
         value: '',
         path: ['form', 'password'],
-        violates: '@modulify/validator/IsString',
-        reason: 'min',
-        meta: 6,
+        violates: {
+          predicate: 'hasLength',
+          rule: 'min',
+          args: [6],
+        },
       }])
     })
 
-    test('doesn\'t check non-object values', () => {
+    test('does not check non-object values', () => {
       expect(validate.sync('', HasProperties({
         form: HasProperties({
-          nickname: IsString.That(HasLength({ min: 4 })),
-          password: IsString.That(HasLength({ min: 6 })),
+          nickname: [isString, hasLength({ min: 4 })],
+          password: [isString, hasLength({ min: 6 })],
         }),
       }))).toEqual([{
         value: '',
         path: [],
-        violates: '@modulify/validator/HasProperties',
-        reason: 'unsupported',
-      }])
-    })
-  })
-
-  describe('HasProperties & IsDefined', () => {
-    test('checks object\'s structure', () => {
-      expect(validate.sync({}, HasProperties({
-        form: [
-          IsDefined,
-          HasProperties({
-            nickname: IsString.That(HasLength({ min: 4 })),
-            password: IsString.That(HasLength({ min: 6 })),
-          }),
-        ],
-      }))).toEqual([{
-        value: undefined,
-        path: ['form'],
-        violates: '@modulify/validator/IsDefined',
-        reason: 'undefined',
+        violates: {
+          predicate: 'isRecord',
+          rule: 'HasProperties',
+          args: [],
+        },
       }])
     })
   })
@@ -329,60 +339,68 @@ describe('validate.sync', () => {
         { name: 'tooLong' },
       ], Each([
         HasProperties({
-          name: IsString.That(HasLength({ min: 4, max: 6 })),
+          name: [isString, hasLength({ min: 4, max: 6 })],
         }),
       ]))).toEqual([{
         value: '',
         path: [0, 'name'],
-        violates: '@modulify/validator/IsString',
-        reason: 'min',
-        meta: 4,
+        violates: {
+          predicate: 'hasLength',
+          rule: 'min',
+          args: [4],
+        },
       }, {
         value: 'tooLong',
         path: [1, 'name'],
-        violates: '@modulify/validator/IsString',
-        reason: 'max',
-        meta: 6,
+        violates: {
+          predicate: 'hasLength',
+          rule: 'max',
+          args: [6],
+        },
       }])
     })
 
     test('checks single value', () => {
       expect(validate.sync({ name: 'tooLong' }, Each([
         HasProperties({
-          name: IsString.That(HasLength({ min: 4, max: 6 })),
+          name: [isString, hasLength({ min: 4, max: 6 })],
         }),
       ]))).toEqual([{
         value: 'tooLong',
         path: ['name'],
-        violates: '@modulify/validator/IsString',
-        reason: 'max',
-        meta: 6,
+        violates: {
+          predicate: 'hasLength',
+          rule: 'max',
+          args: [6],
+        },
       }])
     })
   })
 
-  test('OneOf', () => {
-    expect(validate.sync('', OneOf(['filled', 'outline', 'tonal']))).toEqual([{
+  test('oneOf', () => {
+    expect(validate.sync('', oneOf(['filled', 'outline', 'tonal']))).toEqual([{
       value: '',
       path: [],
-      violates: '@modulify/validator/OneOf',
-      meta: ['filled', 'outline', 'tonal'],
+      violates: {
+        predicate: 'oneOf',
+        rule: 'oneOf',
+        args: [['filled', 'outline', 'tonal']],
+      },
     }])
   })
 
   test('throws error if found async validator', () => {
-    const validator = Object.assign(async (value: unknown) => {
-      return {
-        value,
-        violates: '__async__',
-      }
-    }, {
-      fqn: '__async__',
-      bail: false,
-    })
+    const asyncAssertion = createAsyncAssertion('__async__', async (value: unknown) => ({
+      value,
+      violates: {
+        predicate: '__async__',
+        rule: '__async__',
+        args: [],
+      },
+    }))
 
     expect(() => {
-      validate.sync('', validator)
-    }).toThrowError('Found asynchronous constraint validator __async__')
+      validate.sync('', asyncAssertion)
+    }).toThrowError('Found asynchronous validator __async__')
   })
 })

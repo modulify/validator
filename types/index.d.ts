@@ -9,60 +9,63 @@ export type MaybeMany<V> = V | V[]
 export type MaybePromise<V> = V | Promise<V>
 
 export type Predicate<T = unknown> = (value: unknown) => value is T
-export type Meta<T> = {
-  fqn: string | symbol,
-  bail: boolean;
-  reason?: string | symbol;
-  meta?: T;
+
+export type Checker<T, A extends unknown[] = unknown[]> = (value: T, ...args: A) => boolean
+export type CheckerArguments<C> = C extends (value: unknown, ...args: infer A) => unknown ? A : never
+
+export type Extractor<T, V> = (value: T) => V
+
+export type ViolationSubject<T extends unknown[] = unknown[]> = {
+  predicate: string;
+  rule: string;
+  args: T;
 }
 
-export type Assertion<T = unknown, M = unknown> = Predicate<T> & Meta<M> & {
-  readonly also: Assertion[]
-
-  That(...asserts: Assertion[]): Assertion<T, M>;
-
-  check (
-    value: unknown,
-    path?: PropertyKey[]
-  ): Violation<M>;
-}
-
-export type Violation<M = unknown> = {
+export type Violation<S extends ViolationSubject = ViolationSubject> = {
   value: unknown;
-  /** Path to a property, if a constraint is used as part of a `Collection` for checking some object's structure */
   path?: PropertyKey[];
-  violates: string | symbol;
-  reason?: string | symbol;
-  meta?: M;
+  violates: S;
 }
 
-export type Validator<M = unknown> = ((
-  value: unknown,
-  path?: PropertyKey[]
-) => MaybePromise<Violation<M> | null>) & {
-  fqn: string;
-  bail: boolean;
-}
+export type AssertionConstraint<
+  T = unknown,
+  V = unknown,
+  A extends unknown[] = unknown[],
+  N extends string = string
+> = [
+  Extractor<T, V>,
+  Checker<V, A>,
+  N,
+  ...A
+]
 
-export type Constraint = Assertion | Validator | ValidationRunner
+export type Assertion<
+  T = unknown,
+  C extends AssertionConstraint[] = AssertionConstraint[]
+> = ((value: unknown) => MaybePromise<Omit<Violation, 'path'> | null>) & {
+  readonly name: string;
+  readonly bail: boolean;
+  readonly constraints: C;
+  readonly check: Predicate<T>;
+}
 
 export type Validate = <T> (
   value: T,
-  constraints: MaybeMany<Constraint>,
+  constraints: MaybeMany<Assertion | Validator>,
   path?: PropertyKey[]
 ) => Promise<Violation[]>
 
 export type ValidateSync = <T>(
   value: T,
-  constraints: MaybeMany<Constraint>,
+  constraints: MaybeMany<Assertion | Validator>,
   path?: PropertyKey[]
 ) => Violation[]
 
-export type Validation<F extends Validate | ValidateSync> = Validate extends F
+export type Validation<F extends Validate | ValidateSync> = F extends Validate
   ? MaybePromise<Violation[]>
   : Violation[]
 
-export interface ValidationRunner {
+export interface Validator {
   run <F extends Validate | ValidateSync> (
     validate: F,
     value: unknown,

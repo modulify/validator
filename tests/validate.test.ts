@@ -10,18 +10,21 @@ import {
 } from 'vitest'
 
 import {
+  each,
   shape,
 } from '@/combinators'
 
 import {
   assert,
   hasLength,
+  isDefined,
   isString,
   oneOf,
 } from '@/assertions'
 
 import { validate } from '@/index'
 
+const expectProfile = <T extends { name: string; tags: string[] }>(value: T) => value
 const valid = <T>(value: T) => [true, value, []]
 const invalid = <T>(value: T, violations: unknown[]) => [false, value, violations]
 const assertionSubject = (name: string, code: string, args: unknown[] = []): ViolationSubject => ({ kind: 'assertion', name, code, args })
@@ -58,12 +61,53 @@ const createAsyncAssertion = (
 }
 
 describe('validate', () => {
+  const profile = shape({
+    name: [isDefined, isString],
+    tags: each(isString),
+  })
+
   test('oneOf', async () => {
     expect(await validate('', oneOf(['filled', 'outline', 'tonal']))).toEqual(invalid('', [{
       value: '',
       path: [],
       violates: assertionSubject('oneOf', 'value.one-of', [['filled', 'outline', 'tonal']]),
     }]))
+  })
+
+  test('returns typed async success branch through destructuring', async () => {
+    const [ok, validated, violations] = await validate({
+      name: 'kirill',
+      tags: ['ts'],
+    }, profile)
+
+    expect(ok).toBe(true)
+
+    if (ok) {
+      expectProfile(validated)
+      expect(violations).toEqual([])
+      expect(validated.name.toUpperCase()).toBe('KIRILL')
+    }
+  })
+
+  test('keeps tuple items correlated after destructuring in the failure branch', async () => {
+    const [ok, validated, violations] = await validate({
+      name: 'kirill',
+      tags: [1],
+    }, profile)
+
+    expect(ok).toBe(false)
+
+    if (!ok) {
+      expect(validated).toEqual({
+        name: 'kirill',
+        tags: [1],
+      })
+      expect(violations).toEqual([{
+        value: 1,
+        path: ['tags', 0],
+        violates: assertionSubject('isString', 'type.string'),
+      }])
+    }
   })
 
   test('skips the rest constraints if the current one with bail flag fails', async () => {
@@ -192,12 +236,62 @@ describe('validate', () => {
 })
 
 describe('validate.sync', () => {
+  const profile = shape({
+    name: [isDefined, isString],
+    tags: each(isString),
+  })
+
   test('oneOf', () => {
     expect(validate.sync('', oneOf(['filled', 'outline', 'tonal']))).toEqual(invalid('', [{
       value: '',
       path: [],
       violates: assertionSubject('oneOf', 'value.one-of', [['filled', 'outline', 'tonal']]),
     }]))
+  })
+
+  test('returns typed sync success branch through the validated tuple item', () => {
+    const [ok, validated, violations] = validate.sync({
+      name: 'kirill',
+      tags: ['ts', 'validation'],
+    }, profile)
+
+    expect(ok).toBe(true)
+
+    if (ok) {
+      expectProfile(validated)
+      expect(violations).toEqual([])
+      expect(validated.tags[0]?.toUpperCase()).toBe('TS')
+    }
+  })
+
+  test('returns sync failure branch with the original value and violations', () => {
+    const [ok, validated, violations] = validate.sync({
+      name: 'kirill',
+      tags: 'ts',
+    }, profile)
+
+    expect(ok).toBe(false)
+    expect(validated).toEqual({
+      name: 'kirill',
+      tags: 'ts',
+    })
+    expect(violations).toEqual([{
+      value: 'ts',
+      path: ['tags'],
+      violates: validatorSubject('each', 'type.array'),
+    }])
+  })
+
+  test('exports reusable shapes from the package root', () => {
+    const schema = shape({
+      name: [isDefined, isString],
+    }).strict()
+
+    expect(validate.sync({
+      name: 'kirill',
+    }, schema)).toEqual([true, {
+      name: 'kirill',
+    }, []])
   })
 
   test('throws error if found async validator', () => {

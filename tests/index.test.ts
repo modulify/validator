@@ -23,7 +23,8 @@ import { validate } from '@/index'
 
 const createAsyncAssertion = (
   name: string,
-  handler: (value: unknown) => Promise<ReturnType<Assertion>>
+  handler: (value: unknown) => Promise<ReturnType<Assertion>>,
+  bail = false
 ): Assertion => {
   const assertion = (async (value: unknown) => handler(value)) as Assertion
 
@@ -34,7 +35,7 @@ const createAsyncAssertion = (
     },
     bail: {
       enumerable: true,
-      value: false,
+      value: bail,
     },
     constraints: {
       enumerable: true,
@@ -255,6 +256,88 @@ describe('validate', () => {
         predicate: 'settle',
         rule: 'reject',
         args: ['test rejection'],
+      },
+    }])
+  })
+
+  test('awaits async assertions with bail and stops further checks on failure', async () => {
+    expect(await validate('', [
+      createAsyncAssertion('asyncBail', async (value: unknown) => ({
+        value,
+        violates: {
+          predicate: 'asyncBail',
+          rule: 'asyncBail',
+          args: [],
+        },
+      }), true),
+      hasLength({ min: 2 }),
+    ])).toEqual([{
+      value: '',
+      path: [],
+      violates: {
+        predicate: 'asyncBail',
+        rule: 'asyncBail',
+        args: [],
+      },
+    }])
+  })
+
+  test('collects violations from async assertions without bail', async () => {
+    expect(await validate('', [
+      createAsyncAssertion('asyncNoBail', async (value: unknown) => ({
+        value,
+        violates: {
+          predicate: 'asyncNoBail',
+          rule: 'asyncNoBail',
+          args: [],
+        },
+      })),
+      hasLength({ min: 2 }),
+    ])).toEqual([{
+      value: '',
+      path: [],
+      violates: {
+        predicate: 'asyncNoBail',
+        rule: 'asyncNoBail',
+        args: [],
+      },
+    }, {
+      value: '',
+      path: [],
+      violates: {
+        predicate: 'hasLength',
+        rule: 'min',
+        args: [2],
+      },
+    }])
+  })
+
+  test('continues after async bail assertions that succeed', async () => {
+    expect(await validate('', [
+      createAsyncAssertion('asyncBailPass', async () => null, true),
+      hasLength({ min: 2 }),
+    ])).toEqual([{
+      value: '',
+      path: [],
+      violates: {
+        predicate: 'hasLength',
+        rule: 'min',
+        args: [2],
+      },
+    }])
+  })
+
+  test('ignores async assertions without bail when they return null', async () => {
+    expect(await validate('', [
+      createAsyncAssertion('asyncNoBailPass', async () => null),
+      hasLength({ min: 2 }),
+    ])).toEqual([{
+      value: '',
+      path: [],
+      violates: {
+        predicate: 'hasLength',
+        rule: 'min',
+        args: [2],
       },
     }])
   })

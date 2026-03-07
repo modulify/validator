@@ -215,6 +215,17 @@ describe('isShape', () => {
       name: [isString, true],
     })(2)).toBe(false)
   })
+
+  test('supports shorthand required predicates and optional tuple predicates', () => {
+    const shape = isShape({
+      id: isNumber,
+      name: [isString, false],
+    })
+
+    expect(shape({ id: 1, name: 'Alice' })).toBe(true)
+    expect(shape({ id: 1 })).toBe(true)
+    expect(shape({ name: 'Alice' })).toBe(false)
+  })
 })
 
 describe('isString', () => {

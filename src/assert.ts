@@ -4,6 +4,8 @@ import type {
   Predicate,
 } from '~types'
 
+import { attachConstraintDescriptor } from '@/metadata'
+
 type AssertMeta = {
   name: string;
   bail: boolean;
@@ -67,5 +69,13 @@ export const assert = <T, C extends AssertionConstraint[] = AssertionConstraint[
     },
   })
 
-  return assertion
+  return attachConstraintDescriptor(assertion, () => ({
+    kind: 'assertion',
+    name: meta.name,
+    bail: meta.bail,
+    constraints: constraints.map(([, , code, ...args]) => ({
+      code,
+      args,
+    })),
+  }))
 }

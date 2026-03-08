@@ -345,6 +345,13 @@ Detailed guides:
 
 - [Public API Guide](./docs/en/05-public-api.md)
 
+## Recipes And AI Reference
+
+Two additional guides are useful when you want faster practical navigation instead of reading the whole conceptual set front to back.
+
+- [Common Recipes](./docs/en/06-common-recipes.md) - task-oriented examples for payload validation, wrapper choice, reusable shapes, form error mapping, and JSON Schema export.
+- [AI Reference](./docs/en/07-ai-reference.md) - compact contract summary for agents, tooling, and quick semantic lookup.
+
 ## Notes
 
 - Assertions return structured metadata instead of messages.

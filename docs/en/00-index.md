@@ -5,6 +5,8 @@
 - [Violations](./03-violations.md) - Detailed guide to `Violation`, `ViolationCollection`, `collection(...)`, and tree/path semantics.
 - [JSON Schema Export](./04-json-schema-export.md) - Detailed guide to `toJsonSchema(...)`, supported mappings, metadata mapping, and strict vs best-effort export.
 - [Public API](./05-public-api.md) - Overview of root exports, subpath exports, validation result shape, and how the package surface is split.
+- [Common Recipes](./06-common-recipes.md) - Task-oriented recipes for choosing the right layer, validating payloads, reusing shapes, shaping UI errors, and exporting schemas safely.
+- [AI Reference](./07-ai-reference.md) - Compact contract summary for AI agents, tooling, and quick lookup of stable library semantics.
 
 ## Translations
 

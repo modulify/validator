@@ -72,9 +72,9 @@
     "@commitlint/cli": "^17.7.1",
     "@commitlint/config-conventional": "^17.7.0",
     "@eslint/js": "^9.17.0",
-    "@types/node": "^18.15 || ^20.11",
-    "@vitest/coverage-istanbul": "2.1.8",
-    "@vitest/ui": "2.1.8",
+    "@types/node": "^25.3.5",
+    "@vitest/coverage-istanbul": "4.0.18",
+    "@vitest/ui": "4.0.18",
     "eslint": "^9.17.0",
     "globals": "^15.14.0",
     "husky": "^9.1.7",
@@ -82,9 +82,9 @@
     "tslib": "^2.8.1",
     "typescript": "^5.5.4",
     "typescript-eslint": "^8.18.1",
-    "vite": "^5.4.11",
-    "vite-plugin-dts": "^4.4.0",
-    "vitest": "^2.1.8"
+    "vite": "^7.3.1",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^4.0.18"
   },
   "publishConfig": {
     "access": "public"
@@ -101,5 +101,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/modulify/validator.git"
-  }
+  },
+  "packageManager": "yarn@4.12.0"
 }

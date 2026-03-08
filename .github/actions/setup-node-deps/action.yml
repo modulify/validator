@@ -1,0 +1,40 @@
+name: Setup Node and dependencies
+description: Setup Node.js runtime, restore Yarn cache, and install dependencies.
+
+inputs:
+  node-version:
+    description: Node.js version
+    required: false
+    default: 24.x
+  registry-url:
+    description: Optional npm registry URL for setup-node
+    required: false
+    default: ''
+  install-args:
+    description: Extra arguments passed to yarn install
+    required: false
+    default: --frozen-lockfile
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      if: ${{ inputs.registry-url == '' }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: yarn
+        cache-dependency-path: yarn.lock
+
+    - name: Setup Node.js with registry
+      if: ${{ inputs.registry-url != '' }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        registry-url: ${{ inputs.registry-url }}
+        cache: yarn
+        cache-dependency-path: yarn.lock
+
+    - name: Install dependencies
+      shell: bash
+      run: yarn install ${{ inputs.install-args }}

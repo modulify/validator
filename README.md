@@ -294,6 +294,27 @@ const [ok, validated, violations] = validate.sync({
 - `value` is optional and defaults to the current object value at that relative path;
 - `code` stays fully machine-readable so application code can decide how to render it.
 
+When a rule needs to be more useful for tooling, you can attach a compact descriptor without serializing the callback itself:
+
+```typescript
+const registration = shape({
+  password: isString,
+  confirmPassword: isString,
+}).refine(value => {
+  return value.password === value.confirmPassword
+    ? []
+    : [{
+      path: ['confirmPassword'],
+      code: 'shape.fields.mismatch',
+    }]
+}, {
+  kind: 'passwordConfirmation',
+  metadata: {
+    fields: ['password', 'confirmPassword'],
+  },
+})
+```
+
 For the common confirmation-field case there is a small helper:
 
 ```typescript
@@ -351,7 +372,7 @@ const registration = meta(shape({
 const node = describe(registration)
 ```
 
-`describe(...)` returns a recursive machine-readable descriptor tree for built-in constraints.
+`describe(...)` returns a recursive machine-readable descriptor tree for built-in constraints and for custom validators that expose a public `describe()` method.
 
 Examples of `kind` values:
 
@@ -362,6 +383,42 @@ Examples of `kind` values:
 - `'union'` and `'discriminatedUnion'` for branching validators;
 - `'validator'` as a generic fallback for custom validators without built-in structural instrumentation.
 
+That tree is intentionally adapter-oriented rather than presentation-oriented. A small form adapter can walk it and collect widget hints without knowing anything about runtime validation internals:
+
+```typescript
+import type { ConstraintDescriptor } from '@modulify/validator'
+
+function collectFieldWidgets(node: ConstraintDescriptor) {
+  if (node.kind !== 'shape') {
+    return {}
+  }
+
+  return Object.fromEntries(
+    Object.entries(node.fields).map(([key, child]) => [key, child.metadata?.widget ?? 'text'])
+  )
+}
+```
+
+This is especially useful together with schema-adjacent metadata:
+
+```typescript
+import {
+  describe,
+  isString,
+  meta,
+  shape,
+} from '@modulify/validator'
+
+const profile = meta(shape({
+  email: meta(isString, { widget: 'email' }),
+  name: meta(isString, { widget: 'text' }),
+}), {
+  title: 'Profile form',
+})
+
+const node = describe(profile)
+```
+
 Shape descriptors include:
 
 - `metadata` attached with `meta(...)`;
@@ -369,12 +426,40 @@ Shape descriptors include:
 - `fields` with child descriptors per object field;
 - `rules` with lightweight machine-readable summaries of object-level rules such as `refine(...)` and `fieldsMatch(...)`.
 
+Custom validators can participate in the same layer through `custom(...)` plus a public `describe()` method:
+
+```typescript
+import {
+  custom,
+  describe,
+  meta,
+} from '@modulify/validator'
+
+const isoDate = custom({
+  check(value: unknown): value is string {
+    return typeof value === 'string'
+  },
+  run() {
+    return []
+  },
+  describe() {
+    return {
+      kind: 'stringFormat',
+      format: 'iso-date',
+    } as const
+  },
+})
+
+const node = describe(meta(isoDate, { title: 'Published at' }))
+```
+
 Current boundaries of this layer:
 
 - no built-in message rendering or i18n;
 - no JSON Schema exporter yet;
 - no metadata inheritance across the schema tree;
-- no separate schema DSL alongside the existing runtime constraints.
+- no separate schema DSL alongside the existing runtime constraints;
+- no serialization of runtime callbacks from `refine(...)`.
 
 ## Mental Model
 
@@ -487,6 +572,7 @@ The root package exports:
 - `matches.sync`;
 - `meta`;
 - `describe`;
+- `custom`;
 - `collection`;
 - `ViolationCollection`;
 - all exports from `./assertions`;
@@ -499,6 +585,7 @@ Available from:
 ```typescript
 import {
   describe,
+  custom,
   discriminatedUnion,
   assert,
   each,
@@ -526,7 +613,8 @@ import {
 
 Members:
 
-- `describe(constraint)` - returns a stable recursive machine-readable descriptor for built-in constraints;
+- `describe(constraint)` - returns a stable recursive machine-readable descriptor for built-in constraints and public custom descriptors;
+- `custom(validator)` - preserves the exact type shape of a custom validator, including an optional public `describe()` method;
 - `assert(predicate, meta, constraints?)` - low-level assertion factory;
 - `discriminatedUnion(key, variants)` - validates tagged object variants via a discriminator field;
 - `each(constraints)` - validates each array item and fails on non-array values;

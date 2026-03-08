@@ -7,6 +7,7 @@ import {
 } from 'vitest'
 
 import {
+  custom,
   describe as describeConstraint,
   discriminatedUnion,
   each,
@@ -89,7 +90,12 @@ suite('describe', () => {
       email: meta(isString, { format: 'email' }),
       password: isString,
       confirmPassword: isString,
-    }).strict().fieldsMatch(['password', 'confirmPassword']).refine(() => []), {
+    }).strict().fieldsMatch(['password', 'confirmPassword']).refine(() => [], {
+      kind: 'passwordConfirmation',
+      metadata: {
+        fields: ['password', 'confirmPassword'],
+      },
+    }), {
       title: 'Registration',
     })
 
@@ -105,7 +111,12 @@ suite('describe', () => {
     expect(node.unknownKeys).toBe('strict')
     expect(node.rules).toEqual([
       { kind: 'fieldsMatch', selectors: ['password', 'confirmPassword'] },
-      { kind: 'refine' },
+      {
+        kind: 'passwordConfirmation',
+        metadata: {
+          fields: ['password', 'confirmPassword'],
+        },
+      },
     ])
     expect(node.fields.email).toEqual({
       kind: 'assertion',
@@ -183,8 +194,31 @@ suite('describe', () => {
     })
   })
 
-  test('falls back to a generic validator descriptor for custom validators', () => {
-    const custom = meta({
+  test('supports public custom descriptors and preserves metadata above them', () => {
+    const isoDate = custom({
+      check(value: unknown): value is string {
+        return typeof value === 'string'
+      },
+      run() {
+        return []
+      },
+      describe() {
+        return {
+          kind: 'stringFormat' as const,
+          format: 'iso-date' as const,
+        }
+      },
+    })
+
+    expect(describeConstraint(meta(isoDate, { title: 'Published at' }))).toEqual({
+      kind: 'stringFormat',
+      format: 'iso-date',
+      metadata: { title: 'Published at' },
+    })
+  })
+
+  test('falls back to a generic validator descriptor for custom validators without a public descriptor', () => {
+    const fallback = meta({
       check(value: unknown): value is string {
         return typeof value === 'string'
       },
@@ -195,7 +229,7 @@ suite('describe', () => {
       title: 'Custom validator',
     })
 
-    expect(describeConstraint(custom)).toEqual({
+    expect(describeConstraint(fallback)).toEqual({
       kind: 'validator',
       metadata: { title: 'Custom validator' },
     })

@@ -456,10 +456,76 @@ const node = describe(meta(isoDate, { title: 'Published at' }))
 Current boundaries of this layer:
 
 - no built-in message rendering or i18n;
-- no JSON Schema exporter yet;
 - no metadata inheritance across the schema tree;
 - no separate schema DSL alongside the existing runtime constraints;
 - no serialization of runtime callbacks from `refine(...)`.
+
+## JSON Schema Export
+
+`toJsonSchema(...)` derives a JSON Schema view from the same public descriptor tree returned by `describe(...)`.
+
+```typescript
+import {
+  isNumber,
+  isString,
+  meta,
+  optional,
+  shape,
+} from '@modulify/validator'
+import { toJsonSchema } from '@modulify/validator/json-schema'
+
+const profile = meta(shape({
+  email: meta(isString, {
+    title: 'Email',
+    format: 'email',
+  }),
+  age: optional(isNumber),
+}).strict(), {
+  title: 'Profile',
+})
+
+const jsonSchema = toJsonSchema(profile)
+```
+
+The exporter currently covers the built-in descriptor set:
+
+- leaf assertions such as `isString`, `isNumber`, `isBoolean`, `isNull`, `exact(...)`, `oneOf(...)`, `hasLength(...)`;
+- wrappers such as `optional(...)`, `nullable(...)`, `nullish(...)`;
+- structural combinators such as `shape(...)`, `each(...)`, `tuple(...)`, `record(...)`;
+- branching combinators such as `union(...)` and `discriminatedUnion(...)`;
+- chained array slots exported as JSON Schema `allOf`.
+
+Metadata attached with `meta(...)` is intentionally mapped through a small explicit whitelist:
+
+- `title`
+- `description`
+- `format`
+- `default`
+- `examples`
+- `deprecated`
+- `readOnly`
+- `writeOnly`
+
+Other metadata stays library-specific and is not copied into the exported schema automatically.
+
+Best-effort export is the default. Unsupported or opaque nodes become permissive `{}` nodes, and unsupported object-level shape rules are dropped with a `$comment` marker:
+
+```typescript
+const schema = toJsonSchema(profile)
+```
+
+Strict export throws `JsonSchemaExportError` instead:
+
+```typescript
+const schema = toJsonSchema(profile, { mode: 'strict' })
+```
+
+Important practical boundaries:
+
+- the exporter is derived from the public descriptor contract, not from private validator internals;
+- it does not change runtime validation semantics;
+- object field presence is approximated through JSON Schema `required`, so runtime differences between "missing" and `undefined` are not modeled exactly;
+- object-level `refine(...)` rules and unknown custom descriptor kinds do not have a built-in faithful mapping.
 
 ## Mental Model
 
@@ -578,6 +644,11 @@ The root package exports:
 - all exports from `./assertions`;
 - all exports from `./combinators`.
 
+Additional subpath exports:
+
+- `./predicates`;
+- `./json-schema`.
+
 ### Assertions And Combinators
 
 Available from:
@@ -637,6 +708,22 @@ Members:
 - `record(constraints)` - validates dynamic object keys against shared constraints;
 - `tuple([constraints...])` - validates fixed-length positional tuples.
 - `union([constraints...])` - validates a value against multiple alternative branches.
+
+### JSON Schema Export
+
+Available from:
+
+```typescript
+import {
+  JsonSchemaExportError,
+  toJsonSchema,
+} from '@modulify/validator/json-schema'
+```
+
+Members:
+
+- `toJsonSchema(constraint, options?)` - derives a JSON Schema view from one or many public constraint descriptors;
+- `JsonSchemaExportError` - strict-mode export error for unsupported or opaque descriptor nodes.
 
 ### Validate Result
 

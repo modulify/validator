@@ -6,7 +6,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "~types": ["./types/index.d.ts"],
-      "~types/*": ["./types"]
+      "~types/*": ["./types/*"]
     },
     "resolveJsonModule": true,
     "target": "ES2017"

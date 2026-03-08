@@ -73,6 +73,8 @@ export const assert = <T, C extends AssertionConstraint[] = AssertionConstraint[
     kind: 'assertion',
     name: meta.name,
     bail: meta.bail,
+    code: meta.code ?? meta.name,
+    args: meta.args ?? [],
     constraints: constraints.map(([, , code, ...args]) => ({
       code,
       args,

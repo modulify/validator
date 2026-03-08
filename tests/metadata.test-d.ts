@@ -52,6 +52,8 @@ describe('metadata and introspection types', () => {
       if (descriptor.child.kind === 'assertion') {
         assertType<string>(descriptor.child.name)
         assertType<boolean>(descriptor.child.bail)
+        assertType<string | undefined>(descriptor.child.code)
+        assertType<readonly unknown[] | undefined>(descriptor.child.args)
       }
     }
   })

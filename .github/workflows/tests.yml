@@ -75,6 +75,10 @@ jobs:
       run: |
         yarn test:coverage
 
+    - name: Run type tests
+      run: |
+        yarn test:d
+
     - name: Upload coverage to GitHub Artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -82,6 +86,7 @@ jobs:
         path: coverage/
 
     - name: Upload coverage reports to Codecov
+      if: matrix.node-version == '24.x'
       uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}

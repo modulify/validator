@@ -465,16 +465,10 @@ const exportDiscriminatedUnion = (
 const exportRulesAsComment = (
   rules: readonly ObjectShapeRuleDescriptor[],
   schema: JsonSchema
-): JsonSchema => {
-  if (rules.length === 0 || '$comment' in schema) {
-    return schema
-  }
-
-  return {
-    ...schema,
-    $comment: `Dropped ${rules.length} object rule(s) during best-effort JSON Schema export.`,
-  }
-}
+): JsonSchema => ({
+  ...schema,
+  $comment: `Dropped ${rules.length} object rule(s) during best-effort JSON Schema export.`,
+})
 
 const exportDescriptor = (
   descriptor: ConstraintDescriptor,

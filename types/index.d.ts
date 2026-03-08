@@ -101,65 +101,100 @@ export interface AssertionDescriptor extends ConstraintDescriptorBase<'assertion
 }
 
 /** Generic fallback descriptor for custom validators without structural instrumentation. */
-export interface ValidatorDescriptor extends ConstraintDescriptorBase<'validator'> {}
+export type ValidatorDescriptor = ConstraintDescriptorBase<'validator'>
+
+/** Public extension descriptor for custom validators that expose their own `describe()` contract. */
+export interface CustomConstraintDescriptor<K extends string = string> extends ConstraintDescriptorBase<K> {
+  readonly [key: string]: unknown
+}
 
 /** Descriptor for sequential arrays of constraints used in a single slot. */
-export interface AllOfConstraintDescriptor extends ConstraintDescriptorBase<'allOf'> {
-  readonly constraints: readonly ConstraintDescriptor[]
+export interface AllOfConstraintDescriptor<
+  T extends readonly unknown[] = readonly ConstraintDescriptor[],
+> extends ConstraintDescriptorBase<'allOf'> {
+  readonly constraints: T
 }
 
 /** Descriptor for wrapper combinators such as `optional(...)`. */
 export interface WrapperConstraintDescriptor<
   K extends 'optional' | 'nullable' | 'nullish' = 'optional' | 'nullable' | 'nullish',
+  C = ConstraintDescriptor,
 > extends ConstraintDescriptorBase<K> {
-  readonly child: ConstraintDescriptor
+  readonly child: C
 }
 
 /** Descriptor for `each(...)`. */
-export interface EachConstraintDescriptor extends ConstraintDescriptorBase<'each'> {
-  readonly item: ConstraintDescriptor
+export interface EachConstraintDescriptor<
+  C = ConstraintDescriptor,
+> extends ConstraintDescriptorBase<'each'> {
+  readonly item: C
 }
 
 /** Descriptor for `tuple(...)`. */
-export interface TupleConstraintDescriptor extends ConstraintDescriptorBase<'tuple'> {
-  readonly items: readonly ConstraintDescriptor[]
+export interface TupleConstraintDescriptor<
+  T extends readonly unknown[] = readonly ConstraintDescriptor[],
+> extends ConstraintDescriptorBase<'tuple'> {
+  readonly items: T
 }
 
 /** Descriptor for `union(...)`. */
-export interface UnionConstraintDescriptor extends ConstraintDescriptorBase<'union'> {
-  readonly branches: readonly ConstraintDescriptor[]
+export interface UnionConstraintDescriptor<
+  T extends readonly unknown[] = readonly ConstraintDescriptor[],
+> extends ConstraintDescriptorBase<'union'> {
+  readonly branches: T
 }
 
 /** Descriptor for `record(...)`. */
-export interface RecordConstraintDescriptor extends ConstraintDescriptorBase<'record'> {
-  readonly values: ConstraintDescriptor
+export interface RecordConstraintDescriptor<
+  C = ConstraintDescriptor,
+> extends ConstraintDescriptorBase<'record'> {
+  readonly values: C
 }
 
 /** Descriptor for `discriminatedUnion(...)`. */
-export interface DiscriminatedUnionConstraintDescriptor extends ConstraintDescriptorBase<'discriminatedUnion'> {
+export interface DiscriminatedUnionConstraintDescriptor<
+  V = Readonly<Record<PropertyKey, ConstraintDescriptor>>,
+> extends ConstraintDescriptorBase<'discriminatedUnion'> {
   readonly key: PropertyKey;
-  readonly variants: Readonly<Record<PropertyKey, ConstraintDescriptor>>
+  readonly variants: V
+}
+
+/** Machine-readable summary of object-level rules registered on a shape. */
+export interface ObjectShapeRuleDescriptorBase<K extends string = string> {
+  readonly kind: K;
+  readonly metadata?: ConstraintMetadata
+}
+
+/** Generic compact descriptor for sync object-level rules added via `.refine(...)`. */
+export type GenericObjectShapeRuleDescriptor<
+  K extends string = 'refine',
+> = ObjectShapeRuleDescriptorBase<K>
+
+/** Descriptor for the built-in `.fieldsMatch(...)` helper. */
+export interface FieldsMatchObjectShapeRuleDescriptor<
+  Left extends ObjectShapeFieldSelector = ObjectShapeFieldSelector,
+  Right extends ObjectShapeFieldSelector = ObjectShapeFieldSelector,
+> extends ObjectShapeRuleDescriptorBase<'fieldsMatch'> {
+  readonly selectors: readonly [Left, Right]
 }
 
 /** Machine-readable summary of object-level rules registered on a shape. */
 export type ObjectShapeRuleDescriptor =
-  | {
-    readonly kind: 'refine'
-  }
-  | {
-    readonly kind: 'fieldsMatch';
-    readonly selectors: readonly [ObjectShapeFieldSelector, ObjectShapeFieldSelector]
-  }
+  | GenericObjectShapeRuleDescriptor<string>
+  | FieldsMatchObjectShapeRuleDescriptor
 
 /** Descriptor for `shape(...)`. */
-export interface ShapeConstraintDescriptor extends ConstraintDescriptorBase<'shape'> {
+export interface ShapeConstraintDescriptor<
+  F = Readonly<Record<PropertyKey, ConstraintDescriptor>>,
+  R extends readonly ObjectShapeRuleDescriptor[] = readonly ObjectShapeRuleDescriptor[],
+> extends ConstraintDescriptorBase<'shape'> {
   readonly unknownKeys: UnknownKeysMode;
-  readonly fields: Readonly<Record<PropertyKey, ConstraintDescriptor>>;
-  readonly rules: readonly ObjectShapeRuleDescriptor[]
+  readonly fields: F;
+  readonly rules: R
 }
 
 /** Stable machine-readable description of a constraint tree. */
-export type ConstraintDescriptor =
+export type BuiltInConstraintDescriptor =
   | AssertionDescriptor
   | AllOfConstraintDescriptor
   | ValidatorDescriptor
@@ -170,6 +205,9 @@ export type ConstraintDescriptor =
   | RecordConstraintDescriptor
   | DiscriminatedUnionConstraintDescriptor
   | ShapeConstraintDescriptor
+
+/** Stable machine-readable description of a constraint tree. */
+export type ConstraintDescriptor = BuiltInConstraintDescriptor | CustomConstraintDescriptor
 
 /**
  * Extra checker pipeline for an assertion.
@@ -303,9 +341,6 @@ export type ValidationResult<T> = ValidationTuple<T>
 /** Attaches read-only metadata to a constraint without changing validation semantics. */
 export declare const meta: <const C extends Constraint, const M extends ConstraintMetadata>(constraint: C, metadata: M) => C
 
-/** Returns a stable machine-readable description of a constraint tree. */
-export declare const describe: <const C extends Constraint>(constraint: C) => ConstraintDescriptor
-
 /**
  * Composed validator used by recursive helpers such as `shape(...)` and `each(...)`.
  *
@@ -323,6 +358,17 @@ export interface Validator<T = unknown> {
     path: PropertyKey[]
   ): Validation<F>[];
 }
+
+/** Public validator extension contract for participating in `describe(...)` without private runtime knowledge. */
+export interface DescribedValidator<
+  T = unknown,
+  D extends ConstraintDescriptor = ConstraintDescriptor,
+> extends Validator<T> {
+  describe(): D;
+}
+
+/** Identity helper that preserves the exact shape of custom validators, including public descriptors. */
+export declare const custom: <const V extends Validator>(validator: V) => V
 
 /** Descriptor that maps object keys to one or many constraints. */
 export type ObjectDescriptor = Record<PropertyKey, MaybeMany<Constraint>>
@@ -352,18 +398,150 @@ export type MergeObjectDescriptors<
 export interface ObjectShape<
   D extends ObjectDescriptor = ObjectDescriptor,
   M extends UnknownKeysMode = 'passthrough',
+  R extends readonly ObjectShapeRuleDescriptor[] = readonly ObjectShapeRuleDescriptor[],
 > extends Validator<InferObjectDescriptor<D>> {
   readonly descriptor: D;
   readonly unknownKeys: M;
-  refine(refinement: ObjectShapeRefinement<InferObjectDescriptor<D>>): ObjectShape<D, M>;
-  fieldsMatch<const K extends readonly [ObjectShapeFieldSelector, ObjectShapeFieldSelector]>(keys: K): ObjectShape<D, M>;
-  strict(): ObjectShape<D, 'strict'>;
-  passthrough(): ObjectShape<D, 'passthrough'>;
-  pick<const K extends readonly (keyof D)[]>(keys: K): ObjectShape<Pick<D, K[number]>, M>;
-  omit<const K extends readonly (keyof D)[]>(keys: K): ObjectShape<Omit<D, K[number]>, M>;
-  partial(): ObjectShape<PartialObjectDescriptor<D>, M>;
-  extend<const E extends ObjectDescriptor>(descriptor: E): ObjectShape<MergeObjectDescriptors<D, E>, M>;
-  merge<const E extends ObjectDescriptor, OM extends UnknownKeysMode>(
-    shape: ObjectShape<E, OM>
-  ): ObjectShape<MergeObjectDescriptors<D, E>, M>;
+  refine(
+    refinement: ObjectShapeRefinement<InferObjectDescriptor<D>>
+  ): ObjectShape<D, M, [...R, GenericObjectShapeRuleDescriptor<'refine'>]>;
+  refine<const RD extends GenericObjectShapeRuleDescriptor<string>>(
+    refinement: ObjectShapeRefinement<InferObjectDescriptor<D>>,
+    descriptor: RD
+  ): ObjectShape<D, M, [...R, RD]>;
+  fieldsMatch<const K extends readonly [ObjectShapeFieldSelector, ObjectShapeFieldSelector]>(
+    keys: K
+  ): ObjectShape<D, M, [...R, FieldsMatchObjectShapeRuleDescriptor<K[0], K[1]>]>;
+  strict(): ObjectShape<D, 'strict', R>;
+  passthrough(): ObjectShape<D, 'passthrough', R>;
+  pick<const K extends readonly (keyof D)[]>(keys: K): ObjectShape<Pick<D, K[number]>, M, []>;
+  omit<const K extends readonly (keyof D)[]>(keys: K): ObjectShape<Omit<D, K[number]>, M, []>;
+  partial(): ObjectShape<PartialObjectDescriptor<D>, M, []>;
+  extend<const E extends ObjectDescriptor>(descriptor: E): ObjectShape<MergeObjectDescriptors<D, E>, M, []>;
+  merge<const E extends ObjectDescriptor, OM extends UnknownKeysMode, OR extends readonly ObjectShapeRuleDescriptor[]>(
+    shape: ObjectShape<E, OM, OR>
+  ): ObjectShape<MergeObjectDescriptors<D, E>, M, []>;
 }
+
+/** Helper that maps a single constraint into its public `describe(...)` result. */
+export type DescribeConstraint<C extends Constraint> =
+  C extends Assertion
+    ? AssertionDescriptor
+    : C extends ObjectShape<infer D, infer M, infer R>
+      ? ShapeConstraintDescriptor<DescribeObjectDescriptor<D>, R> & { readonly unknownKeys: M }
+      : C extends OptionalValidator<infer Child>
+        ? WrapperConstraintDescriptor<'optional', DescribeMaybeMany<Child>>
+        : C extends NullableValidator<infer Child>
+          ? WrapperConstraintDescriptor<'nullable', DescribeMaybeMany<Child>>
+          : C extends NullishValidator<infer Child>
+            ? WrapperConstraintDescriptor<'nullish', DescribeMaybeMany<Child>>
+            : C extends EachValidator<infer Child>
+              ? EachConstraintDescriptor<DescribeMaybeMany<Child>>
+              : C extends TupleValidator<infer Items>
+                ? TupleConstraintDescriptor<DescribeConstraintTuple<Items>>
+                : C extends UnionValidator<infer Branches>
+                  ? UnionConstraintDescriptor<DescribeConstraintTuple<Branches>>
+                  : C extends DiscriminatedUnionValidator<PropertyKey, infer Variants>
+                    ? DiscriminatedUnionConstraintDescriptor<DescribeObjectDescriptor<Variants>>
+                    : C extends RecordValidator<infer Values>
+                      ? RecordConstraintDescriptor<DescribeMaybeMany<Values>>
+                      : C extends DescribedValidator<unknown, infer D>
+                        ? D & { readonly metadata?: ConstraintMetadata }
+                        : C extends Validator
+                          ? ValidatorDescriptor
+                          : never
+
+/** Helper that maps a one-or-many constraint slot into its public `describe(...)` result. */
+export type DescribeMaybeMany<C extends MaybeMany<Constraint>> =
+  C extends readonly [infer Only]
+    ? Only extends Constraint
+      ? DescribeConstraint<Only>
+      : never
+    : C extends readonly [Constraint, Constraint, ...Constraint[]]
+      ? AllOfConstraintDescriptor<DescribeConstraintTuple<C>>
+      : C extends readonly Constraint[]
+        ? DescribeConstraint<C[number]> | AllOfConstraintDescriptor
+        : C extends Constraint
+          ? DescribeConstraint<C>
+          : never
+
+/** Helper that maps object descriptors into their `describe(...)` field tree. */
+export type DescribeObjectDescriptor<D extends ObjectDescriptor> = {
+  [K in keyof D]: DescribeMaybeMany<D[K]>
+}
+
+/** Helper that maps tuples of constraints into tuples of descriptors. */
+export type DescribeConstraintTuple<T extends readonly MaybeMany<Constraint>[]> = {
+  readonly [K in keyof T]: DescribeMaybeMany<T[K]>
+} & ReadonlyArray<DescribeMaybeMany<T[number]>>
+
+declare const optionalValidatorBrand: unique symbol
+declare const nullableValidatorBrand: unique symbol
+declare const nullishValidatorBrand: unique symbol
+declare const eachValidatorBrand: unique symbol
+declare const tupleValidatorBrand: unique symbol
+declare const unionValidatorBrand: unique symbol
+declare const discriminatedUnionValidatorBrand: unique symbol
+declare const recordValidatorBrand: unique symbol
+
+/** Typed validator returned by `optional(...)`. */
+export type OptionalValidator<C extends MaybeMany<Constraint> = MaybeMany<Constraint>> =
+  Validator<InferConstraints<C> | undefined> & {
+    readonly [optionalValidatorBrand]: C
+  }
+
+/** Typed validator returned by `nullable(...)`. */
+export type NullableValidator<C extends MaybeMany<Constraint> = MaybeMany<Constraint>> =
+  Validator<InferConstraints<C> | null> & {
+    readonly [nullableValidatorBrand]: C
+  }
+
+/** Typed validator returned by `nullish(...)`. */
+export type NullishValidator<C extends MaybeMany<Constraint> = MaybeMany<Constraint>> =
+  Validator<InferConstraints<C> | null | undefined> & {
+    readonly [nullishValidatorBrand]: C
+  }
+
+/** Typed validator returned by `each(...)`. */
+export type EachValidator<C extends MaybeMany<Constraint> = MaybeMany<Constraint>> =
+  Validator<InferConstraints<C>[]> & {
+    readonly [eachValidatorBrand]: C
+  }
+
+/** Typed validator returned by `tuple(...)`. */
+export type TupleValidator<T extends readonly MaybeMany<Constraint>[] = readonly MaybeMany<Constraint>[]> =
+  Validator<{
+    -readonly [K in keyof T]: InferConstraints<T[K]>
+  }> & {
+    readonly [tupleValidatorBrand]: T
+  }
+
+/** Typed validator returned by `union(...)`. */
+export type UnionValidator<T extends readonly MaybeMany<Constraint>[] = readonly MaybeMany<Constraint>[]> =
+  Validator<{
+    [K in keyof T]: InferConstraints<T[K]>
+  }[number]> & {
+    readonly [unionValidatorBrand]: T
+  }
+
+/** Typed validator returned by `discriminatedUnion(...)`. */
+export type DiscriminatedUnionValidator<
+  K extends PropertyKey = PropertyKey,
+  T extends Record<PropertyKey, MaybeMany<Constraint>> = Record<PropertyKey, MaybeMany<Constraint>>,
+> = Validator<{
+  [P in keyof T]: InferConstraints<T[P]>
+}[keyof T]> & {
+  readonly [discriminatedUnionValidatorBrand]: {
+    readonly key: K;
+    readonly variants: T;
+  }
+}
+
+/** Typed validator returned by `record(...)`. */
+export type RecordValidator<C extends MaybeMany<Constraint> = MaybeMany<Constraint>> =
+  Validator<Record<string, InferConstraints<C>>> & {
+    readonly [recordValidatorBrand]: C
+  }
+
+/** Returns a stable machine-readable description of a constraint tree. */
+export declare const describe: <const C extends Constraint>(constraint: C) => DescribeConstraint<C>

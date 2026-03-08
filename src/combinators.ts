@@ -1,15 +1,25 @@
 import type {
   Constraint,
+  DiscriminatedUnionValidator,
+  EachValidator,
+  FieldsMatchObjectShapeRuleDescriptor,
+  GenericObjectShapeRuleDescriptor,
   InferConstraints,
   MaybeMany,
+  NullableValidator,
+  NullishValidator,
   ObjectShapeFieldSelector,
   ObjectShapeRefinement,
   ObjectShapeRefinementIssue,
   ObjectShapeRuleDescriptor,
   MergeObjectDescriptors,
   ObjectShape,
+  OptionalValidator,
   PartialObjectDescriptor,
+  RecordValidator,
+  TupleValidator,
   UnknownKeysMode,
+  UnionValidator,
   Validate,
   ValidateSync,
   Validation,
@@ -63,9 +73,15 @@ type InferDiscriminatedUnion<T extends VariantMap> = {
   [K in keyof T]: InferConstraints<T[K]>
 }[keyof T]
 
-type StrictObjectShape<D extends ShapeDescriptor> = ObjectShape<D, 'strict'>
+type StrictObjectShape<
+  D extends ShapeDescriptor,
+  R extends readonly ObjectShapeRuleDescriptor[] = readonly ObjectShapeRuleDescriptor[],
+> = ObjectShape<D, 'strict', R>
 
-type PassthroughObjectShape<D extends ShapeDescriptor> = ObjectShape<D, 'passthrough'>
+type PassthroughObjectShape<
+  D extends ShapeDescriptor,
+  R extends readonly ObjectShapeRuleDescriptor[] = readonly ObjectShapeRuleDescriptor[],
+> = ObjectShape<D, 'passthrough', R>
 
 type ShapeRefinement<T> = ObjectShapeRefinement<T>
 
@@ -79,6 +95,17 @@ const describeConstraintMap = <T extends Record<PropertyKey, MaybeMany<Constrain
   })
 
   return described
+}
+
+const normalizeRuleDescriptor = <const R extends GenericObjectShapeRuleDescriptor<string>>(descriptor: R): R => {
+  if (!descriptor.metadata) {
+    return descriptor
+  }
+
+  return {
+    ...descriptor,
+    metadata: Object.freeze({ ...descriptor.metadata }),
+  }
 }
 
 const passthrough = <const C extends MaybeMany<Constraint>, Accepted>(
@@ -212,12 +239,13 @@ const collectShapeRefinementViolations = <D extends ShapeDescriptor>(
 const createObjectShape = <
   const D extends ShapeDescriptor,
   const M extends UnknownKeysMode,
+  const R extends readonly ObjectShapeRuleDescriptor[],
 >(
   descriptor: D,
   unknownKeys: M,
-  refinements: readonly ShapeRefinement<InferShape<D>>[] = [],
-  rules: readonly ObjectShapeRuleDescriptor[] = []
-): ObjectShape<D, M> => {
+  refinements: readonly ShapeRefinement<InferShape<D>>[],
+  rules: R
+): ObjectShape<D, M, R> => {
   const keys = keysOf(descriptor)
 
   return attachConstraintDescriptor({
@@ -267,18 +295,25 @@ const createObjectShape = <
         ? validations
         : [collectShapeRefinementViolations(value as InferShape<D>, path, refinements) as Validation<F>]
     },
-    refine(refinement: ShapeRefinement<InferShape<D>>) {
+    refine<const RD extends GenericObjectShapeRuleDescriptor<string>>(
+      refinement: ShapeRefinement<InferShape<D>>,
+      ruleDescriptor: RD = { kind: 'refine' } as RD
+    ) {
       return createObjectShape(
         descriptor,
         unknownKeys,
         [...refinements, refinement],
-        [...rules, { kind: 'refine' }]
+        [...rules, normalizeRuleDescriptor(ruleDescriptor)] as [...R, RD]
       )
     },
     fieldsMatch<const K extends readonly [ObjectShapeFieldSelector, ObjectShapeFieldSelector]>(selectedKeys: K) {
       const [left, right] = selectedKeys
       const leftPath = toPath(left)
       const rightPath = toPath(right)
+      const ruleDescriptor = {
+        kind: 'fieldsMatch',
+        selectors: [left, right],
+      } as FieldsMatchObjectShapeRuleDescriptor<K[0], K[1]>
 
       return createObjectShape(
         descriptor,
@@ -292,7 +327,7 @@ const createObjectShape = <
               args: [selectedKeys],
             }]
         }],
-        [...rules, { kind: 'fieldsMatch', selectors: [left, right] }]
+        [...rules, ruleDescriptor] as [...R, FieldsMatchObjectShapeRuleDescriptor<K[0], K[1]>]
       )
     },
     strict(): StrictObjectShape<D> {
@@ -302,19 +337,21 @@ const createObjectShape = <
       return createObjectShape(descriptor, 'passthrough', refinements, rules)
     },
     pick<const K extends readonly (keyof D)[]>(selectedKeys: K) {
-      return createObjectShape(pickDescriptor(descriptor, selectedKeys), unknownKeys)
+      return createObjectShape(pickDescriptor(descriptor, selectedKeys), unknownKeys, [], [])
     },
     omit<const K extends readonly (keyof D)[]>(selectedKeys: K) {
-      return createObjectShape(omitDescriptor(descriptor, selectedKeys), unknownKeys)
+      return createObjectShape(omitDescriptor(descriptor, selectedKeys), unknownKeys, [], [])
     },
     partial() {
-      return createObjectShape(partialDescriptor(descriptor), unknownKeys)
+      return createObjectShape(partialDescriptor(descriptor), unknownKeys, [], [])
     },
     extend<const E extends ShapeDescriptor>(extension: E) {
-      return createObjectShape(extendDescriptor(descriptor, extension), unknownKeys)
+      return createObjectShape(extendDescriptor(descriptor, extension), unknownKeys, [], [])
     },
-    merge<const E extends ShapeDescriptor, OM extends UnknownKeysMode>(shape: ObjectShape<E, OM>) {
-      return createObjectShape(extendDescriptor(descriptor, shape.descriptor), unknownKeys)
+    merge<const E extends ShapeDescriptor, OM extends UnknownKeysMode, OR extends readonly ObjectShapeRuleDescriptor[]>(
+      shape: ObjectShape<E, OM, OR>
+    ) {
+      return createObjectShape(extendDescriptor(descriptor, shape.descriptor), unknownKeys, [], [])
     },
   }, () => ({
     kind: 'shape',
@@ -360,7 +397,7 @@ const collectUnionViolations = (
   return toUnionFailure(branches, value, path, branchResults as Validation<ValidateSync>[])
 }
 
-export const each = <const C extends MaybeMany<Constraint>>(constraints: C): Validator<InferConstraints<C>[]> => attachConstraintDescriptor({
+export const each = <const C extends MaybeMany<Constraint>>(constraints: C): EachValidator<C> => attachConstraintDescriptor({
   check(value: unknown): value is InferConstraints<C>[] {
     return isArray(value) && value.every(item => matchesConstraints(item, constraints))
   },
@@ -377,12 +414,12 @@ export const each = <const C extends MaybeMany<Constraint>>(constraints: C): Val
         violates: { kind: 'validator', name: 'each', code: 'type.array', args: [] },
       }]] as Validation<F>[]
   },
-}, () => ({
+} as EachValidator<C>, () => ({
   kind: 'each',
   item: describeConstraints(constraints),
 }))
 
-export const tuple = <const T extends readonly MaybeMany<Constraint>[]>(constraints: T): Validator<InferTuple<T>> => attachConstraintDescriptor({
+export const tuple = <const T extends readonly MaybeMany<Constraint>[]>(constraints: T): TupleValidator<T> => attachConstraintDescriptor({
   check(value: unknown): value is InferTuple<T> {
     return isArray(value)
       && value.length === constraints.length
@@ -411,12 +448,12 @@ export const tuple = <const T extends readonly MaybeMany<Constraint>[]>(constrai
 
     return constraints.map((constraint, index) => validate(value[index], constraint, [...path, index]) as Validation<F>)
   },
-}, () => ({
+} as TupleValidator<T>, () => ({
   kind: 'tuple',
   items: constraints.map(constraint => describeConstraints(constraint)),
 }))
 
-export const union = <const T extends readonly MaybeMany<Constraint>[]>(constraints: T): Validator<InferUnion<T>> => attachConstraintDescriptor({
+export const union = <const T extends readonly MaybeMany<Constraint>[]>(constraints: T): UnionValidator<T> => attachConstraintDescriptor({
   check(value: unknown): value is InferUnion<T> {
     return constraints.some(constraint => matchesConstraints(value, constraint))
   },
@@ -427,7 +464,7 @@ export const union = <const T extends readonly MaybeMany<Constraint>[]>(constrai
   ): Validation<F>[] {
     return [collectUnionViolations(constraints, validate, value, path) as Validation<F>]
   },
-}, () => ({
+} as UnionValidator<T>, () => ({
   kind: 'union',
   branches: constraints.map(constraint => describeConstraints(constraint)),
 }))
@@ -435,7 +472,7 @@ export const union = <const T extends readonly MaybeMany<Constraint>[]>(constrai
 export const discriminatedUnion = <
   const K extends PropertyKey,
   const T extends VariantMap,
->(key: K, variants: T): Validator<InferDiscriminatedUnion<T>> => attachConstraintDescriptor({
+>(key: K, variants: T): DiscriminatedUnionValidator<K, T> => attachConstraintDescriptor({
   check(value: unknown): value is InferDiscriminatedUnion<T> {
     if (!isRecord(value)) {
       return false
@@ -476,13 +513,13 @@ export const discriminatedUnion = <
 
     return [validate(value, variants[discriminator as keyof T], path) as Validation<F>]
   },
-}, () => ({
+} as DiscriminatedUnionValidator<K, T>, () => ({
   kind: 'discriminatedUnion',
   key,
   variants: describeConstraintMap(variants),
 }))
 
-export const record = <const C extends MaybeMany<Constraint>>(constraints: C): Validator<Record<string, InferConstraints<C>>> => attachConstraintDescriptor({
+export const record = <const C extends MaybeMany<Constraint>>(constraints: C): RecordValidator<C> => attachConstraintDescriptor({
   check(value: unknown): value is Record<string, InferConstraints<C>> {
     return isRecord(value) && Object.values(value).every(item => matchesConstraints(item, constraints))
   },
@@ -501,13 +538,13 @@ export const record = <const C extends MaybeMany<Constraint>>(constraints: C): V
 
     return Object.keys(value).map(key => validate(value[key], constraints, [...path, key]) as Validation<F>)
   },
-}, () => ({
+} as RecordValidator<C>, () => ({
   kind: 'record',
   values: describeConstraints(constraints),
 }))
 
-export const shape = <const D extends ShapeDescriptor>(descriptor: D): ObjectShape<D, 'passthrough'> => {
-  return createObjectShape(descriptor, 'passthrough')
+export const shape = <const D extends ShapeDescriptor>(descriptor: D): ObjectShape<D, 'passthrough', []> => {
+  return createObjectShape(descriptor, 'passthrough', [], [])
 }
 
 export const exact = <const T>(value: T) => assert(isExact(value), {
@@ -517,20 +554,20 @@ export const exact = <const T>(value: T) => assert(isExact(value), {
   args: [value],
 })
 
-export const optional = <const C extends MaybeMany<Constraint>>(constraints: C) => passthrough(
+export const optional = <const C extends MaybeMany<Constraint>>(constraints: C): OptionalValidator<C> => passthrough(
   'optional',
   isUndefined,
   constraints
-)
+) as OptionalValidator<C>
 
-export const nullable = <const C extends MaybeMany<Constraint>>(constraints: C) => passthrough(
+export const nullable = <const C extends MaybeMany<Constraint>>(constraints: C): NullableValidator<C> => passthrough(
   'nullable',
   isNull,
   constraints
-)
+) as NullableValidator<C>
 
-export const nullish = <const C extends MaybeMany<Constraint>>(constraints: C) => passthrough(
+export const nullish = <const C extends MaybeMany<Constraint>>(constraints: C): NullishValidator<C> => passthrough(
   'nullish',
   (value: unknown): value is null | undefined => isNull(value) || isUndefined(value),
   constraints
-)
+) as NullishValidator<C>

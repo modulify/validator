@@ -3,7 +3,10 @@ import type {
   Constraint,
   ConstraintDescriptor,
   ConstraintMetadata,
+  DescribeConstraint,
+  DescribeMaybeMany,
   MaybeMany,
+  Validator,
 } from '~types'
 
 import {
@@ -16,6 +19,10 @@ type DescriptorFactory = () => ConstraintDescriptor
 type ConstraintWithIntrospection = Constraint & {
   [constraintDescriptorSymbol]?: DescriptorFactory;
   [constraintMetadataSymbol]?: ConstraintMetadata;
+}
+
+type ValidatorWithDescribe = Validator & {
+  describe?: () => ConstraintDescriptor;
 }
 
 const constraintDescriptorSymbol = Symbol('modulify.validator.descriptor')
@@ -69,6 +76,18 @@ const getConstraintMetadata = (constraint: Constraint): ConstraintMetadata | und
 
 const getDescriptorFactory = (constraint: Constraint): DescriptorFactory | undefined => {
   return (constraint as ConstraintWithIntrospection)[constraintDescriptorSymbol]
+}
+
+const getPublicDescriptor = (constraint: Constraint): ConstraintDescriptor | undefined => {
+  if (!isValidator(constraint)) {
+    return undefined
+  }
+
+  const { describe } = constraint as ValidatorWithDescribe
+
+  return typeof describe === 'function'
+    ? describe.call(constraint)
+    : undefined
 }
 
 const inferAssertionDescriptor = (assertion: Assertion): ConstraintDescriptor => ({
@@ -129,28 +148,36 @@ export const meta = <const C extends Constraint, const M extends ConstraintMetad
   return cloned as C
 }
 
-export const describeConstraints = <const C extends MaybeMany<Constraint>>(constraints: C): ConstraintDescriptor => {
+export const custom = <const V extends Validator>(validator: V): V => validator
+
+export const describeConstraints = <const C extends MaybeMany<Constraint>>(constraints: C): DescribeMaybeMany<C> => {
   const values = arrayify(constraints)
 
   return values.length === 1
-    ? describe(values[0] as Constraint)
+    ? describe(values[0] as Constraint) as DescribeMaybeMany<C>
     : {
       kind: 'allOf',
       constraints: values.map(value => describe(value)),
-    }
+    } as unknown as DescribeMaybeMany<C>
 }
 
-export const describe = <const C extends Constraint>(constraint: C): ConstraintDescriptor => {
+export const describe = <const C extends Constraint>(constraint: C): DescribeConstraint<C> => {
   const factory = getDescriptorFactory(constraint)
   const metadata = getConstraintMetadata(constraint)
 
   if (factory) {
-    return withMetadata(factory(), metadata)
+    return withMetadata(factory(), metadata) as DescribeConstraint<C>
+  }
+
+  const publicDescriptor = getPublicDescriptor(constraint)
+
+  if (publicDescriptor) {
+    return withMetadata(publicDescriptor, metadata) as DescribeConstraint<C>
   }
 
   if (isValidator(constraint)) {
-    return withMetadata({ kind: 'validator' }, metadata)
+    return withMetadata({ kind: 'validator' }, metadata) as DescribeConstraint<C>
   }
 
-  return withMetadata(inferAssertionDescriptor(constraint), metadata)
+  return withMetadata(inferAssertionDescriptor(constraint), metadata) as DescribeConstraint<C>
 }

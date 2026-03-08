@@ -1,11 +1,13 @@
 # Документация
 
-- [README на русском](./README.md) - Перевод основного README с обзором библиотеки и ссылками на подробные guides.
-- [API объектных схем](./01-shape-api.md) - Подробное описание `shape(...)`, derived helpers, режимов unknown keys и правил уровня объекта.
-- [Метаданные и интроспекция](./02-metadata-and-introspection.md) - Подробное описание metadata layer, introspection и пользовательских descriptors.
+- [README на русском](./README.md) - Перевод основного README с обзором библиотеки и ссылками на подробные руководства.
+- [API объектных схем](./01-shape-api.md) - Подробное описание `shape(...)`, производных вспомогательных методов, режимов unknown keys и правил уровня объекта.
+- [Метаданные и интроспекция](./02-metadata-and-introspection.md) - Подробное описание слоя метаданных, introspection и пользовательских descriptors.
 - [Нарушения](./03-violations.md) - Подробное описание формата violation, `collection(...)` и дерева ошибок.
-- [Экспорт JSON Schema](./04-json-schema-export.md) - Подробное описание export layer, supported mappings и режимов strict и best-effort.
-- [Публичный API](./05-public-api.md) - Обзор публичных entrypoint-ов, subpath exports и результата валидации.
+- [Экспорт JSON Schema](./04-json-schema-export.md) - Подробное описание слоя экспорта, поддерживаемых преобразований и режимов strict и best-effort.
+- [Публичный API](./05-public-api.md) - Обзор публичных точек входа, subpath exports и результата валидации.
+- [Практические рецепты](./06-common-recipes.md) - Практические сценарии по выбору слоя, валидации payload, переиспользованию shape, построению состояния ошибок в UI и безопасному экспорту схемы.
+- [Справка для AI](./07-ai-reference.md) - Краткое описание контракта для AI agents, инструментов и быстрого поиска стабильной семантики библиотеки.
 
 ## Переводы
 

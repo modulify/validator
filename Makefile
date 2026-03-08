@@ -1,5 +1,6 @@
 TARGET_HEADER=@echo -e '===== \e[34m' $@ '\e[0m'
 YARN=@docker-compose run --rm node yarn
+ACTIONLINT=@docker run --rm -v "$(CURDIR):/repo" -w /repo rhysd/actionlint:latest
 
 .PHONY: node_modules
 node_modules: package.json yarn.lock ## Installs dependencies
@@ -20,6 +21,11 @@ husky: node_modules ## Adds husky git hooks with commit content checks
 eslint: node_modules ## Runs eslint
 	$(TARGET_HEADER)
 	$(YARN) lint
+
+.PHONY: actionlint
+actionlint: ## Runs actionlint against GitHub Actions workflows
+	$(TARGET_HEADER)
+	$(ACTIONLINT) -color
 
 .PHONY: test
 test: node_modules ## Runs autotests

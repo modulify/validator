@@ -43,6 +43,8 @@ suite('meta', () => {
       kind: 'assertion',
       name: 'isString',
       bail: true,
+      code: 'type.string',
+      args: [],
       constraints: [],
     })
 
@@ -50,6 +52,8 @@ suite('meta', () => {
       kind: 'assertion',
       name: 'isString',
       bail: true,
+      code: 'type.string',
+      args: [],
       constraints: [],
       metadata: { title: 'Display name' },
     })
@@ -62,6 +66,8 @@ suite('meta', () => {
       kind: 'assertion',
       name: 'isString',
       bail: true,
+      code: 'type.string',
+      args: [],
       constraints: [],
       metadata: {
         title: 'Email',
@@ -79,6 +85,8 @@ suite('describe', () => {
         kind: 'assertion',
         name: 'isString',
         bail: true,
+        code: 'type.string',
+        args: [],
         constraints: [],
         metadata: { title: 'Nickname' },
       },
@@ -122,6 +130,8 @@ suite('describe', () => {
       kind: 'assertion',
       name: 'isString',
       bail: true,
+      code: 'type.string',
+      args: [],
       constraints: [],
       metadata: { format: 'email' },
     })
@@ -129,6 +139,8 @@ suite('describe', () => {
       kind: 'assertion',
       name: 'isString',
       bail: true,
+      code: 'type.string',
+      args: [],
       constraints: [],
     })
   })
@@ -162,12 +174,16 @@ suite('describe', () => {
             kind: 'assertion',
             name: 'exact',
             bail: true,
+            code: 'value.exact',
+            args: ['admin'],
             constraints: [],
           },
           {
             kind: 'assertion',
             name: 'isNumber',
             bail: true,
+            code: 'type.number',
+            args: [],
             constraints: [],
           },
         ],
@@ -189,6 +205,8 @@ suite('describe', () => {
         kind: 'assertion',
         name: 'isNumber',
         bail: true,
+        code: 'type.number',
+        args: [],
         constraints: [],
       },
     })

@@ -23,6 +23,12 @@
       "require": "./dist/combinators.cjs",
       "default": "./dist/combinators.mjs"
     },
+    "./json-schema": {
+      "types": "./dist/json-schema.d.ts",
+      "import": "./dist/json-schema.mjs",
+      "require": "./dist/json-schema.cjs",
+      "default": "./dist/json-schema.mjs"
+    },
     "./predicates": {
       "types": "./dist/predicates.d.ts",
       "import": "./dist/predicates.mjs",
@@ -38,6 +44,9 @@
       ],
       "combinators": [
         "./dist/combinators.d.ts"
+      ],
+      "json-schema": [
+        "./dist/json-schema.d.ts"
       ],
       "predicates": [
         "./dist/predicates.d.ts"

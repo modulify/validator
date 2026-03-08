@@ -94,6 +94,8 @@ const inferAssertionDescriptor = (assertion: Assertion): ConstraintDescriptor =>
   kind: 'assertion',
   name: assertion.name,
   bail: assertion.bail,
+  code: assertion.name,
+  args: [],
   constraints: assertion.constraints.map(([, , code, ...args]) => ({
     code,
     args,

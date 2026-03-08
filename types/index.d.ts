@@ -97,6 +97,8 @@ export interface ConstraintDescriptorBase<K extends string = string> {
 export interface AssertionDescriptor extends ConstraintDescriptorBase<'assertion'> {
   readonly name: string;
   readonly bail: boolean;
+  readonly code?: string;
+  readonly args?: readonly unknown[];
   readonly constraints: readonly AssertionDescriptorConstraint[]
 }
 

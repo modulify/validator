@@ -23,6 +23,7 @@ export default mergeConfig(basic, defineConfig({
         index: resolve(__dirname, './src/index.ts'),
         assertions: resolve(__dirname, './src/assertions.ts'),
         combinators: resolve(__dirname, './src/combinators.ts'),
+        'json-schema': resolve(__dirname, './src/json-schema.ts'),
         predicates: resolve(__dirname, './src/predicates.ts'),
       },
       fileName: (format, entryName) => `${entryName}.${{

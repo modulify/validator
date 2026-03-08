@@ -7,6 +7,7 @@ import {
 } from 'vitest'
 
 import {
+  assert,
   custom,
   describe as describeConstraint,
   discriminatedUnion,
@@ -250,6 +251,58 @@ suite('describe', () => {
     expect(describeConstraint(fallback)).toEqual({
       kind: 'validator',
       metadata: { title: 'Custom validator' },
+    })
+  })
+
+  test('falls back to inferred descriptors for plain assertions and fills default assertion codes', () => {
+    function plainAssertion(value: unknown) {
+      return typeof value === 'string'
+        ? null
+        : {
+          value,
+          violates: {
+            kind: 'assertion' as const,
+            name: 'plainAssertion',
+            code: 'plainAssertion',
+            args: [],
+          },
+        }
+    }
+
+    Object.assign(plainAssertion, {
+      bail: false,
+      constraints: [[
+        (value: string) => value.length,
+        (length: number, min: number) => length >= min,
+        'length.min',
+        3,
+      ]] as const,
+    })
+
+    expect(describeConstraint(plainAssertion as never)).toEqual({
+      kind: 'assertion',
+      name: 'plainAssertion',
+      bail: false,
+      code: 'plainAssertion',
+      args: [],
+      constraints: [{
+        code: 'length.min',
+        args: [3],
+      }],
+    })
+
+    const inferredCode = assert((value: unknown): value is number => typeof value === 'number', {
+      name: 'isFiniteCustom',
+      bail: false,
+    })
+
+    expect(describeConstraint(inferredCode)).toEqual({
+      kind: 'assertion',
+      name: 'isFiniteCustom',
+      bail: false,
+      code: 'isFiniteCustom',
+      args: [],
+      constraints: [],
     })
   })
 })

@@ -13,7 +13,7 @@ inputs:
   install-args:
     description: Extra arguments passed to yarn install
     required: false
-    default: --frozen-lockfile
+    default: --immutable
 
 runs:
   using: composite

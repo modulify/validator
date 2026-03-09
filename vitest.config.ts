@@ -11,8 +11,14 @@ export default mergeConfig(basic, defineConfig({
       '**/*.{test,spec}.?(c|m)[jt]s?(x)',
     ],
     coverage: {
-      provider: 'istanbul',
+      provider: 'v8',
       include: ['src/**'],
+      reporter: [
+        'text',
+        'html',
+        'json',
+        'lcovonly',
+      ],
     },
     typecheck: {
       checker: 'tsc',

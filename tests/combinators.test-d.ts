@@ -25,6 +25,7 @@ import {
   union,
 } from '@/combinators'
 import {
+  hasLength,
   isNumber,
   isString,
   matches,
@@ -33,6 +34,13 @@ import {
 } from '@/index'
 
 describe('combinator types', () => {
+  test('shape rejects incompatible staged assertion tuples in fields', () => {
+    shape({
+      // @ts-expect-error incompatible clarifying assertion
+      name: [isNumber, hasLength({ min: 3 })] as const,
+    })
+  })
+
   test('exact preserves literal types', () => {
     const result = validate.sync('admin', exact('admin'))
 

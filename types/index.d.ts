@@ -27,6 +27,9 @@ export type Checker<T, A extends readonly unknown[] = readonly unknown[]> = (val
 /** Extracts a derived value from the original input before a checker runs. */
 export type Extractor<T, V> = (value: T) => V
 
+/** Public stage marker for assertion pipelines. */
+export type AssertionStage = 'guard' | 'refinement'
+
 /** Origin layer that produced a violation. */
 export type ViolationKind = 'assertion' | 'validator' | 'runtime'
 
@@ -411,6 +414,8 @@ export type DescribeAssertionConstraintTuple<T extends readonly AssertionConstra
     : never
 } & ReadonlyArray<DescribeAssertionConstraint<T[number]>>
 
+declare const assertionStageBrand: unique symbol
+
 /**
  * Leaf-level validator that checks a single value and either succeeds with `null`
  * or returns a structured violation.
@@ -423,19 +428,41 @@ export type Assertion<
   Code extends string = string,
   A extends readonly unknown[] = readonly unknown[],
   Name extends string = string,
+  Stage extends AssertionStage = AssertionStage,
 > = ((value: unknown) => MaybePromise<Omit<Violation<
-  {
-    kind: 'assertion';
-    name: Name;
-    code: Code;
-    args: A;
-  } | AssertionConstraintSubject<C[number], Name>
+  Stage extends 'refinement'
+    ? AssertionConstraintSubject<C[number], Name>
+    : {
+        kind: 'assertion';
+        name: Name;
+        code: Code;
+        args: A;
+      } | AssertionConstraintSubject<C[number], Name>
 >, 'path'> | null>) & {
   readonly name: Name;
   readonly bail: boolean;
   readonly constraints: C;
   readonly check: Predicate<T>;
+  readonly [assertionStageBrand]: Stage;
 }
+
+/** Assertion stage that establishes the base domain for subsequent checks. */
+export type Guard<
+  T = unknown,
+  C extends readonly AssertionConstraint[] = readonly AssertionConstraint[],
+  Code extends string = string,
+  A extends readonly unknown[] = readonly unknown[],
+  Name extends string = string,
+> = Assertion<T, C, Code, A, Name, 'guard'>
+
+/** Assertion stage that validates properties inside an already established domain. */
+export type Refinement<
+  T = unknown,
+  C extends readonly AssertionConstraint[] = readonly AssertionConstraint[],
+  Code extends string = string,
+  A extends readonly unknown[] = readonly unknown[],
+  Name extends string = string,
+> = Assertion<T, C, Code, A, Name, 'refinement'>
 
 /**
  * Any reusable validation unit: either a leaf `Assertion` or a composed `Validator`.
@@ -445,9 +472,65 @@ export type Assertion<
  */
 export type Constraint<T = unknown> = Assertion<T> | Validator<T>
 
+type ConstraintSequenceState<
+  Value,
+  Ready extends boolean,
+> = {
+  value: Value;
+  ready: Ready;
+}
+
+type ApplyConstraintStep<
+  State extends ConstraintSequenceState<unknown, boolean>,
+  Step extends Constraint,
+> =
+  [Step] extends [Refinement<infer Input, readonly AssertionConstraint[], string, readonly unknown[], string>]
+    ? State['ready'] extends true
+      ? [State['value']] extends [Input]
+        ? ConstraintSequenceState<State['value'], true>
+        : never
+      : never
+    : Step extends Constraint<infer Output>
+      ? ConstraintSequenceState<State['value'] & Output, true>
+      : never
+
+type CompatibleConstraintTupleState<
+  T extends readonly Constraint[],
+  State extends ConstraintSequenceState<unknown, boolean> = ConstraintSequenceState<unknown, false>,
+> =
+  T extends readonly [infer First extends Constraint, ...infer Rest extends readonly Constraint[]]
+    ? ApplyConstraintStep<State, First> extends infer Next
+      ? [Next] extends [never]
+        ? never
+        : Next extends ConstraintSequenceState<unknown, boolean>
+          ? CompatibleConstraintTupleState<Rest, Next>
+          : never
+      : never
+    : State
+
+/** Tuple of sequential constraints with stage-aware assertion compatibility checks. */
+export type CompatibleConstraintTuple<T extends readonly Constraint[] = readonly Constraint[]> =
+  number extends T['length']
+    ? T
+    : T extends readonly [Constraint, ...Constraint[]]
+    ? CompatibleConstraintTupleState<T> extends never
+      ? never
+      : T
+    : T
+
+/** One-or-many constraint input after applying staged assertion compatibility checks. */
+export type CompatibleConstraints<C> =
+  C extends readonly Constraint[]
+    ? CompatibleConstraintTuple<C>
+    : C extends Refinement<unknown, readonly AssertionConstraint[], string, readonly unknown[], string>
+      ? never
+      : C extends Constraint
+      ? C
+      : never
+
 /** Extracts the validated TypeScript type from a single constraint. */
 export type InferConstraint<C> =
-  C extends Assertion<infer T, readonly AssertionConstraint[], string, readonly unknown[], string>
+  C extends Assertion<infer T, readonly AssertionConstraint[], string, readonly unknown[], string, AssertionStage>
     ? T
     : C extends Validator<infer T>
       ? T
@@ -474,7 +557,7 @@ export type InferConstraints<C> =
 /** Internal async runner signature used by composed validators. */
 export type Validate = (( 
   value: unknown,
-  constraints: MaybeMany<Constraint>,
+  constraints: CompatibleConstraints<MaybeMany<Constraint>>,
   path?: PropertyKey[]
 ) => Promise<Violation[]>) & {
   readonly sync?: false
@@ -483,7 +566,7 @@ export type Validate = ((
 /** Internal sync runner signature used by composed validators. */
 export type ValidateSync = ((
   value: unknown,
-  constraints: MaybeMany<Constraint>,
+  constraints: CompatibleConstraints<MaybeMany<Constraint>>,
   path?: PropertyKey[]
 ) => Violation[]) & {
   readonly sync: true
@@ -607,13 +690,15 @@ type InferShapeViolations<D extends ShapeDescriptor> = {
 
 /** Maps a single constraint into the union of violations it can produce. */
 export type InferConstraintViolations<C extends Constraint> =
-  C extends Assertion<unknown, infer AC, infer Code, infer Args, infer Name>
+  C extends Guard<unknown, infer AC, infer Code, infer Args, infer Name>
     ? Violation<{
         kind: 'assertion';
         name: Name;
         code: Code;
         args: Args;
       } | AssertionConstraintSubject<AC[number], Name>>
+    : C extends Refinement<unknown, infer AC, string, readonly unknown[], infer Name>
+      ? Violation<AssertionConstraintSubject<AC[number], Name>>
     : C extends ObjectShape<infer D, infer M, readonly ObjectShapeRuleDescriptor[], infer RI>
       ? KnownCodeViolation<'type.record'>
         | (M extends 'strict' ? KnownCodeViolation<'shape.unknown-key'> : never)
@@ -705,6 +790,11 @@ export declare const custom: <const V extends Validator>(validator: V) => V
 /** Descriptor that maps object keys to one or many constraints. */
 export type ShapeDescriptor = Record<PropertyKey, MaybeMany<Constraint>>
 
+/** Shape descriptor with stage-aware compatibility checks applied to every field slot. */
+export type CompatibleShapeDescriptor<D extends ShapeDescriptor> = {
+  [K in keyof D]: CompatibleConstraints<D[K]>
+}
+
 /** Runtime type inferred from a shape descriptor. */
 export type InferShape<D extends ShapeDescriptor> = {
   [K in keyof D]: InferConstraints<D[K]>
@@ -752,7 +842,7 @@ export interface ObjectShape<
 
 /** Helper that maps a single constraint into its public `describe(...)` result. */
 export type DescribeConstraint<C extends Constraint> =
-  C extends Assertion<unknown, infer AC, infer Code, infer Args, string>
+  C extends Assertion<unknown, infer AC, infer Code, infer Args, string, AssertionStage>
     ? AssertionDescriptor<Code, Args, DescribeAssertionConstraintTuple<AC>>
     : C extends ObjectShape<infer D, infer M, infer R, ShapeRefinementViolationInput>
       ? ShapeConstraintDescriptor<DescribeShapeDescriptor<D>, R> & { readonly unknownKeys: M }

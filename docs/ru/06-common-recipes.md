@@ -14,7 +14,7 @@
 Быстрое правило выбора:
 
 - используйте `@modulify/validator/predicates`, когда нужны только runtime checks и type guards;
-- используйте built-in assertions вроде `isString`, `isDefined`, `hasLength(...)`, `oneOf(...)`, когда нужны машиночитаемые ошибки;
+- используйте built-in guard/refinement assertions вроде `isString`, `isDefined`, `hasLength(...)`, `oneOf(...)`, когда нужны машиночитаемые ошибки;
 - используйте combinators вроде `shape(...)`, `each(...)`, `tuple(...)`, `record(...)`, `union(...)`, `discriminatedUnion(...)`, когда валидация становится структурной;
 - используйте `meta(...)` и `describe(...)`, когда другой слой нуждается в стабильных машиночитаемых descriptors;
 - используйте `toJsonSchema(...)` только тогда, когда нужно представление для interoperability или экспорта, а не источник runtime truth.
@@ -44,6 +44,7 @@ const [ok, validated, violations] = validate.sync(input, createUser)
 
 - используйте `.strict()` для request payload, если неизвестные ключи должны отклоняться;
 - держите leaf checks маленькими и хорошо сочетаемыми друг с другом;
+- если используете массив assertions, начинайте его с совместимого guard-а вроде `isString` перед строковыми refinement-проверками вроде `hasLength(...)`;
 - используйте элемент кортежа `validated` внутри успешной ветки;
 - используйте `violations` как структурированные данные для ответов API, логов или сопоставления с UI.
 

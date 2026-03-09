@@ -1,7 +1,9 @@
 import type {
+  Guard,
+  Refinement,
   ValidationResult,
   Violation,
-} from '@/index'
+} from '~types'
 
 import {
   describe,
@@ -13,6 +15,7 @@ import {
   collection,
   each,
   hasLength,
+  isNumber,
   shape,
   isDefined,
   isString,
@@ -20,6 +23,11 @@ import {
 } from '@/index'
 
 describe('validate tuple types', () => {
+  test('built-in assertions expose staged public types', () => {
+    assertType<Guard<string>>(isString)
+    assertType<Refinement<string | unknown[]>>(hasLength({ min: 3 }))
+  })
+
   const profile = shape({
     name: [isDefined, isString],
     tags: each(isString),
@@ -120,11 +128,33 @@ describe('validate tuple types', () => {
             assertType<readonly [min: number]>(violation.violates.args)
             return String(violation.violates.args[0])
           default:
-            return violation.violates.code
+            assertType<never>(violation.violates)
+            return violation.violates
         }
       })
 
       assertType<string[]>(messages)
     }
+  })
+
+  test('accepts staged tuples after a compatible guard prefix', () => {
+    const result = validate.sync('abcd', [isDefined, isString, hasLength({ min: 3 })])
+
+    assertType<ValidationResult<string>>(result)
+  })
+
+  test('rejects incompatible clarifying assertions in tuples', () => {
+    // @ts-expect-error incompatible clarifying assertion
+    validate.sync(12, [isNumber, hasLength({ min: 3 })] as const)
+  })
+
+  test('rejects tuples that start with a clarifying assertion', () => {
+    // @ts-expect-error clarifying assertions require an established domain
+    validate.sync('abc', [hasLength({ min: 3 })] as const)
+  })
+
+  test('rejects standalone clarifying assertions in validation APIs', () => {
+    // @ts-expect-error clarifying assertions are not standalone validation constraints
+    validate.sync('abc', hasLength({ min: 3 }))
   })
 })

@@ -1,9 +1,16 @@
 import type {
+  Assertion,
+  CompatibleConstraints,
   Constraint,
   InferConstraints,
   MaybeMany,
   Validator,
 } from '~types'
+
+import {
+  checkRefinementAssertion,
+  isRefinementAssertion,
+} from '@/assert'
 
 export const isValidator = <T = unknown>(constraint: Constraint<T>): constraint is Validator<T> => 'run' in constraint
 
@@ -15,7 +22,33 @@ export function arrayify<T>(value: MaybeMany<T>): T[] {
 
 export function matchesConstraints<C extends MaybeMany<Constraint>>(
   value: unknown,
-  constraints: C
+  constraints: CompatibleConstraints<C>
 ): value is InferConstraints<C> {
-  return arrayify(constraints).every(constraint => constraint.check(value))
+  let establishedDomain = false
+
+  return arrayify(constraints).every(constraint => {
+    if (isValidator(constraint)) {
+      const matched = constraint.check(value)
+
+      if (matched) {
+        establishedDomain = true
+      }
+
+      return matched
+    }
+
+    if (!establishedDomain && isRefinementAssertion(constraint)) {
+      return false
+    }
+
+    const matched = establishedDomain && isRefinementAssertion(constraint)
+      ? checkRefinementAssertion(constraint as Assertion, value)
+      : constraint.check(value)
+
+    if (matched) {
+      establishedDomain = true
+    }
+
+    return matched
+  })
 }

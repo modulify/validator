@@ -270,10 +270,14 @@ A practical way to think about the library is:
 
 In the current API this usually looks like:
 
-- leaf checks with assertions such as `isString`, `isDefined`, `hasLength`, `oneOf`;
+- guard assertions such as `isString`, `isNumber`, `isDefined`, `oneOf(...)` establish the base domain for a value;
+- refinement assertions such as `hasLength(...)`, `hasPattern(...)`, `startsWith(...)`, `hasValue(...)`, `multipleOf(...)` validate properties inside that domain;
 - schema composition with combinators such as `exact`, `optional`, `nullable`, `nullish`, `shape(...)`, `each(...)`;
 - typed validation through `validate(...)` or `validate.sync(...)`;
 - narrowing of the original sync variable through `matches.sync(...)`.
+
+Sequential assertion arrays are stage-aware. A tuple like `[isString, hasLength({ min: 3 })]` is valid, while incompatible combinations like `[isNumber, hasLength({ min: 3 })]` are rejected by TypeScript.
+Refinement assertions are not meant to be passed to `validate(...)` or `matches.sync(...)` on their own.
 
 `validate(...)` is the default async-first validation entrypoint. `validate.sync(...)` and `matches.sync(...)` are specialized sync APIs and will throw if they encounter async validators or async object-level `shape(...).refine(...)` rules.
 

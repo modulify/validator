@@ -5,10 +5,12 @@ import {
 } from 'vitest'
 
 import {
+  hasLength,
   isDefined,
   isString,
   matches,
 } from '@/index'
+import { matchesConstraints } from '@/constraints'
 
 const expectString = <T extends string>(value: T) => value
 
@@ -28,5 +30,16 @@ describe('matches.sync', () => {
     const value: unknown = 42
 
     expect(matches.sync(value, [isDefined, isString])).toBe(false)
+  })
+
+  test('returns false for dynamic refinement sequences without a preceding guard', () => {
+    const staged = [hasLength({ min: 2 })]
+
+    expect(matchesConstraints('nickname', staged as never)).toBe(false)
+  })
+
+  test('uses staged refinement checks after a compatible guard succeeds', () => {
+    expect(matchesConstraints('neo', [isString, hasLength({ min: 2 })])).toBe(true)
+    expect(matchesConstraints('n', [isString, hasLength({ min: 2 })])).toBe(false)
   })
 })

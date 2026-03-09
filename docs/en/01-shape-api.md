@@ -49,6 +49,8 @@ Each field in the descriptor may contain:
 - an array of constraints that run sequentially;
 - another structural validator such as `shape(...)`, `each(...)`, `tuple(...)`, `record(...)`, `union(...)`, or `discriminatedUnion(...)`.
 
+For assertion arrays, sequencing is stage-aware: guard assertions establish the field domain first, and refinement assertions must be compatible with that domain.
+
 That means object validation stays aligned with the rest of the library:
 
 - field-level checks reuse the same assertions and combinators;
@@ -78,6 +80,11 @@ Runtime behavior:
 - every declared field is validated against its own slot;
 - nested violations are reported on the field path;
 - unknown keys are allowed by default.
+
+Type-level behavior:
+
+- `[isString, hasLength({ min: 8 })]` is valid;
+- `[isNumber, hasLength({ min: 8 })]` is rejected by TypeScript before runtime.
 
 ## Unknown Keys
 

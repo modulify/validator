@@ -49,6 +49,8 @@ Shape по-прежнему остаётся validator-ом. Дополните�
 - массив constraint-ов, которые выполняются последовательно;
 - другой structural validator вроде `shape(...)`, `each(...)`, `tuple(...)`, `record(...)`, `union(...)` или `discriminatedUnion(...)`.
 
+Для массивов assertions эта последовательность теперь stage-aware: сначала guard assertions задают домен поля, а refinement assertions обязаны быть совместимы с этим доменом.
+
 Поэтому object validation остаётся согласованной с остальной библиотекой:
 
 - field-level checks переиспользуют те же assertions и combinators;
@@ -78,6 +80,11 @@ Runtime behavior:
 - каждое объявленное поле валидируется по своему slot;
 - вложенные violations возвращаются на пути поля;
 - unknown keys по умолчанию разрешены.
+
+Type-level behavior:
+
+- `[isString, hasLength({ min: 8 })]` типизируется корректно;
+- `[isNumber, hasLength({ min: 8 })]` TypeScript отсекает ещё до runtime.
 
 ## Неизвестные ключи
 

@@ -19,6 +19,8 @@ Root package экспортирует:
 - `validate`
 - `validate.sync`
 - `matches.sync`
+- `Guard`
+- `Refinement`
 - `meta`
 - `describe`
 - `custom`
@@ -33,14 +35,18 @@ Root package экспортирует:
 
 Root package включает:
 
-- низкоуровневое создание assertions через `assert(...)`
-- built-in assertions вроде `isString`, `isNumber`, `isBoolean`, `isNull`, `isEmail`, `hasLength(...)`, `oneOf(...)`
+- низкоуровневое создание assertions через `assert(...)` и `refine(...)`
+- built-in guard assertions вроде `isString`, `isNumber`, `isBoolean`, `isNull`, `isEmail`, `oneOf(...)`
+- built-in refinement assertions вроде `hasLength(...)`, `hasSize(...)`, `hasPattern(...)`, `startsWith(...)`, `hasValue(...)`, `multipleOf(...)`
 - structural combinators вроде `shape(...)`, `each(...)`, `tuple(...)`, `record(...)`
 - wrappers вроде `optional(...)`, `nullable(...)`, `nullish(...)`
 - branching combinators вроде `union(...)` и `discriminatedUnion(...)`
 - проверку точного значения через `exact(...)`
 
 Это основной runtime-facing API surface библиотеки.
+
+Последовательные массивы assertions теперь stage-aware: совместимый кортеж вроде `[isString, hasLength({ min: 3 })]` поддерживается напрямую, а несовместимые комбинации отсекаются типовой системой.
+Refinement assertions в этой модели являются staged-helper'ами, поэтому `validate(...)` и `matches.sync(...)` ожидают их после совместимого guard-а, а не в одиночку.
 
 ## Метаданные и интроспекция
 

@@ -265,12 +265,17 @@ describe('toJsonSchema', () => {
     [isMap, 'Map instances do not have a stable JSON Schema representation'],
     [isNaN, 'NaN cannot be represented in JSON Schema'],
     [isSet, 'Set instances do not have a stable JSON Schema representation'],
-    [hasSize({ min: 1 }), 'Map and Set sizes do not have a stable JSON Schema representation'],
   ] as const)('throws in strict mode for unsupported built-in assertion %s', (assertion, reason) => {
     expect(() => toJsonSchema(shape({
       value: assertion,
     }), { mode: 'strict' })).toThrowError(
       `Cannot export assertion at value: ${reason}`
+    )
+  })
+
+  test('throws in strict mode for unsupported built-in refinement export', () => {
+    expect(() => toJsonSchema(hasSize({ min: 1 }), { mode: 'strict' })).toThrowError(
+      'Cannot export assertion at <root>: Map and Set sizes do not have a stable JSON Schema representation'
     )
   })
 
@@ -295,17 +300,17 @@ describe('toJsonSchema', () => {
       optionalUnion: union([exact(undefined), isString]),
       optionalAllOf: [optional(isString), exact(undefined)],
       optionalEnum: oneOf([undefined, 'draft']),
-      exactLength: hasLength({ exact: 3 }),
-      maxLength: hasLength({ max: 5 }),
-      rangeLength: hasLength({ range: [1, 3] }),
-      valueExact: hasValue({ exact: 3 }),
-      valueMin: hasValue({ min: 1 }),
-      valueMax: hasValue({ max: 10 }),
-      valueRange: hasValue({ range: [1, 10] }),
-      valueMultipleOf: multipleOf(5),
-      textPattern: hasPattern(/^[a-z]+$/),
-      textPrefix: startsWith('pre'),
-      textSuffix: endsWith('.ts'),
+      exactLength: [isString, hasLength({ exact: 3 })],
+      maxLength: [isString, hasLength({ max: 5 })],
+      rangeLength: [isString, hasLength({ range: [1, 3] })],
+      valueExact: [isNumber, hasValue({ exact: 3 })],
+      valueMin: [isNumber, hasValue({ min: 1 })],
+      valueMax: [isNumber, hasValue({ max: 10 })],
+      valueRange: [isNumber, hasValue({ range: [1, 10] })],
+      valueMultipleOf: [isNumber, multipleOf(5)],
+      textPattern: [isString, hasPattern(/^[a-z]+$/)],
+      textPrefix: [isString, startsWith('pre')],
+      textSuffix: [isString, endsWith('.ts')],
       [hidden]: isString,
     }))).toEqual({
       type: 'object',
@@ -339,68 +344,112 @@ describe('toJsonSchema', () => {
         },
         optionalEnum: {},
         exactLength: {
-          anyOf: [{
+          allOf: [{
             type: 'string',
-            minLength: 3,
-            maxLength: 3,
           }, {
-            type: 'array',
-            minItems: 3,
-            maxItems: 3,
+            anyOf: [{
+              type: 'string',
+              minLength: 3,
+              maxLength: 3,
+            }, {
+              type: 'array',
+              minItems: 3,
+              maxItems: 3,
+            }],
           }],
         },
         maxLength: {
-          anyOf: [{
+          allOf: [{
             type: 'string',
-            maxLength: 5,
           }, {
-            type: 'array',
-            maxItems: 5,
+            anyOf: [{
+              type: 'string',
+              maxLength: 5,
+            }, {
+              type: 'array',
+              maxItems: 5,
+            }],
           }],
         },
         rangeLength: {
-          anyOf: [{
+          allOf: [{
             type: 'string',
-            minLength: 1,
-            maxLength: 3,
           }, {
-            type: 'array',
-            minItems: 1,
-            maxItems: 3,
+            anyOf: [{
+              type: 'string',
+              minLength: 1,
+              maxLength: 3,
+            }, {
+              type: 'array',
+              minItems: 1,
+              maxItems: 3,
+            }],
           }],
         },
         valueExact: {
-          type: 'number',
-          const: 3,
+          allOf: [{
+            type: 'number',
+          }, {
+            type: 'number',
+            const: 3,
+          }],
         },
         valueMin: {
-          type: 'number',
-          minimum: 1,
+          allOf: [{
+            type: 'number',
+          }, {
+            type: 'number',
+            minimum: 1,
+          }],
         },
         valueMax: {
-          type: 'number',
-          maximum: 10,
+          allOf: [{
+            type: 'number',
+          }, {
+            type: 'number',
+            maximum: 10,
+          }],
         },
         valueRange: {
-          type: 'number',
-          minimum: 1,
-          maximum: 10,
+          allOf: [{
+            type: 'number',
+          }, {
+            type: 'number',
+            minimum: 1,
+            maximum: 10,
+          }],
         },
         valueMultipleOf: {
-          type: 'number',
-          multipleOf: 5,
+          allOf: [{
+            type: 'number',
+          }, {
+            type: 'number',
+            multipleOf: 5,
+          }],
         },
         textPattern: {
-          type: 'string',
-          pattern: '^[a-z]+$',
+          allOf: [{
+            type: 'string',
+          }, {
+            type: 'string',
+            pattern: '^[a-z]+$',
+          }],
         },
         textPrefix: {
-          type: 'string',
-          pattern: '^pre',
+          allOf: [{
+            type: 'string',
+          }, {
+            type: 'string',
+            pattern: '^pre',
+          }],
         },
         textSuffix: {
-          type: 'string',
-          pattern: '\\.ts$',
+          allOf: [{
+            type: 'string',
+          }, {
+            type: 'string',
+            pattern: '\\.ts$',
+          }],
         },
       },
       required: [
@@ -534,16 +583,16 @@ describe('toJsonSchema', () => {
       emptyMultipleOfDescriptor,
       badExact: exact({ role: 'admin' }),
       badEnum: oneOf([{ role: 'admin' }] as never),
-      invalidExactLength: hasLength({ exact: -1 as never }),
-      invalidMinLength: hasLength({ min: -1 as never }),
-      invalidMaxLength: hasLength({ max: -1 as never }),
-      invalidRangeLength: hasLength({ range: [1, -1] as never }),
-      invalidValueExact: hasValue({ exact: Number.POSITIVE_INFINITY as never }),
-      invalidValueMin: hasValue({ min: Number.POSITIVE_INFINITY as never }),
-      invalidValueMax: hasValue({ max: Number.POSITIVE_INFINITY as never }),
-      invalidValueRange: hasValue({ range: [1, Number.NaN] as never }),
-      invalidMultipleOf: multipleOf(0),
-      invalidPattern: hasPattern(/ok/i),
+      invalidExactLength: [isString, hasLength({ exact: -1 as never })],
+      invalidMinLength: [isString, hasLength({ min: -1 as never })],
+      invalidMaxLength: [isString, hasLength({ max: -1 as never })],
+      invalidRangeLength: [isString, hasLength({ range: [1, -1] as never })],
+      invalidValueExact: [isNumber, hasValue({ exact: Number.POSITIVE_INFINITY as never })],
+      invalidValueMin: [isNumber, hasValue({ min: Number.POSITIVE_INFINITY as never })],
+      invalidValueMax: [isNumber, hasValue({ max: Number.POSITIVE_INFINITY as never })],
+      invalidValueRange: [isNumber, hasValue({ range: [1, Number.NaN] as never })],
+      invalidMultipleOf: [isNumber, multipleOf(0)],
+      invalidPattern: [isString, hasPattern(/ok/i)],
       bigInt: isBigInt,
       blob: isBlob,
       date: isDate,
@@ -574,16 +623,36 @@ describe('toJsonSchema', () => {
         emptyMultipleOfDescriptor: {},
         badExact: {},
         badEnum: {},
-        invalidExactLength: {},
-        invalidMinLength: {},
-        invalidMaxLength: {},
-        invalidRangeLength: {},
-        invalidValueExact: {},
-        invalidValueMin: {},
-        invalidValueMax: {},
-        invalidValueRange: {},
-        invalidMultipleOf: {},
-        invalidPattern: {},
+        invalidExactLength: {
+          allOf: [{ type: 'string' }, {}],
+        },
+        invalidMinLength: {
+          allOf: [{ type: 'string' }, {}],
+        },
+        invalidMaxLength: {
+          allOf: [{ type: 'string' }, {}],
+        },
+        invalidRangeLength: {
+          allOf: [{ type: 'string' }, {}],
+        },
+        invalidValueExact: {
+          allOf: [{ type: 'number' }, {}],
+        },
+        invalidValueMin: {
+          allOf: [{ type: 'number' }, {}],
+        },
+        invalidValueMax: {
+          allOf: [{ type: 'number' }, {}],
+        },
+        invalidValueRange: {
+          allOf: [{ type: 'number' }, {}],
+        },
+        invalidMultipleOf: {
+          allOf: [{ type: 'number' }, {}],
+        },
+        invalidPattern: {
+          allOf: [{ type: 'string' }, {}],
+        },
         bigInt: {},
         blob: {},
         date: {},

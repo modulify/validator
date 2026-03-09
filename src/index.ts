@@ -242,7 +242,7 @@ export const matches = {
   },
 }
 
-export const validate = Object.assign(
+export const validate = /* @__PURE__ */ Object.assign(
   async <const C extends MaybeMany<Constraint>>(
     value: unknown,
     constraints: CompatibleConstraints<C>

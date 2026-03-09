@@ -3,12 +3,19 @@ import type { AssertionConstraint } from '~types'
 import { assert } from './assert'
 
 import {
+  endsWith as _endsWith,
   inRange,
   isEqual,
   isGte,
   isLte,
+  isMultipleOf,
+  matchesPattern,
+  startsWith as _startsWith,
 } from '@/checkers'
-import { length } from '@/extractors'
+import {
+  length,
+  size,
+} from '@/extractors'
 import {
   isArray,
   isBoolean as _isBoolean,
@@ -82,6 +89,156 @@ export const hasLength = ({
     constraints
   )
 }
+
+export const hasSize = ({
+  exact = null,
+  max = null,
+  min = null,
+  range = null,
+  bail = false,
+}: {
+  exact?: number | null;
+  max?: number | null;
+  min?: number | null;
+  range?: [number, number] | null;
+  bail?: boolean;
+} = {}) => {
+  const constraints: AssertionConstraint<Map<unknown, unknown> | Set<unknown>>[] = []
+
+  if (exact !== null) constraints.push([size, isEqual, 'size.exact', exact])
+  if (max !== null) constraints.push([size, isLte, 'size.max', max])
+  if (min !== null) constraints.push([size, isGte, 'size.min', min])
+  if (range !== null) constraints.push([size, inRange, 'size.range', range])
+
+  return assert(
+    (value: unknown): value is Map<unknown, unknown> | Set<unknown> => _isMap(value) || _isSet(value),
+    {
+      name: 'hasSize',
+      bail,
+      code: 'size.unsupported-type',
+    },
+    constraints
+  )
+}
+
+export const hasPattern = (
+  pattern: RegExp,
+  {
+    bail = false,
+  }: {
+    bail?: boolean;
+  } = {}
+) => assert(
+  _isString,
+  {
+    name: 'hasPattern',
+    bail,
+    code: 'string.unsupported-type',
+  },
+  [[
+    (value: string) => value,
+    matchesPattern,
+    'string.pattern',
+    pattern,
+  ]]
+)
+
+export const startsWith = (
+  prefix: string,
+  {
+    bail = false,
+  }: {
+    bail?: boolean;
+  } = {}
+) => assert(
+  _isString,
+  {
+    name: 'startsWith',
+    bail,
+    code: 'string.unsupported-type',
+  },
+  [[
+    (value: string) => value,
+    _startsWith,
+    'string.starts-with',
+    prefix,
+  ]]
+)
+
+export const endsWith = (
+  suffix: string,
+  {
+    bail = false,
+  }: {
+    bail?: boolean;
+  } = {}
+) => assert(
+  _isString,
+  {
+    name: 'endsWith',
+    bail,
+    code: 'string.unsupported-type',
+  },
+  [[
+    (value: string) => value,
+    _endsWith,
+    'string.ends-with',
+    suffix,
+  ]]
+)
+
+export const hasValue = ({
+  exact = null,
+  max = null,
+  min = null,
+  range = null,
+  bail = false,
+}: {
+  exact?: number | null;
+  max?: number | null;
+  min?: number | null;
+  range?: [number, number] | null;
+  bail?: boolean;
+} = {}) => {
+  const constraints: AssertionConstraint<number>[] = []
+
+  if (exact !== null) constraints.push([(value: number) => value, isEqual, 'number.exact', exact])
+  if (max !== null) constraints.push([(value: number) => value, isLte, 'number.max', max])
+  if (min !== null) constraints.push([(value: number) => value, isGte, 'number.min', min])
+  if (range !== null) constraints.push([(value: number) => value, inRange, 'number.range', range])
+
+  return assert(
+    _isNumber,
+    {
+      name: 'hasValue',
+      bail,
+      code: 'number.unsupported-type',
+    },
+    constraints
+  )
+}
+
+export const multipleOf = (
+  step: number,
+  {
+    bail = false,
+  }: {
+    bail?: boolean;
+  } = {}
+) => assert(
+  _isNumber,
+  {
+    name: 'multipleOf',
+    bail,
+    code: 'number.unsupported-type',
+  },
+  [[
+    (value: number) => value,
+    isMultipleOf,
+    'number.multiple-of',
+    step,
+  ]]
+)
 
 export const oneOf = <Actual = unknown>(
   values: Actual[] | Record<string, Actual>,

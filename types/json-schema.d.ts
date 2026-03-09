@@ -42,6 +42,10 @@ export interface JsonSchema {
   readonly maxItems?: number;
   readonly minLength?: number;
   readonly maxLength?: number;
+  readonly pattern?: string;
+  readonly minimum?: number;
+  readonly maximum?: number;
+  readonly multipleOf?: number;
 }
 
 /** Controls how `toJsonSchema(...)` handles constraints that cannot be represented faithfully. */

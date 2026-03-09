@@ -20,11 +20,13 @@ export default mergeConfig(basic, defineConfig({
       name,
       formats: ['es', 'cjs'],
       entry: {
-        index: resolve(__dirname, './src/index.ts'),
+        assert: resolve(__dirname, './src/assert.ts'),
         assertions: resolve(__dirname, './src/assertions.ts'),
         combinators: resolve(__dirname, './src/combinators.ts'),
         'json-schema': resolve(__dirname, './src/json-schema.ts'),
+        metadata: resolve(__dirname, './src/metadata.ts'),
         predicates: resolve(__dirname, './src/predicates.ts'),
+        index: resolve(__dirname, './src/index.ts'),
       },
       fileName: (format, entryName) => `${entryName}.${{
         cjs: 'cjs',

@@ -58,6 +58,31 @@ const lengthDescriptor = describe(hasLength({ min: 3 }))
 
 Это удобно для адаптеров и tooling-кода, который читает descriptors и хочет ветвиться по коду без ручных cast.
 
+Та же точность теперь протекает и в `validate(...)` для параметризованных built-in assertions.
+
+```typescript
+import {
+  collection,
+  hasLength,
+  validate,
+} from '@modulify/validator'
+
+const [ok, , violations] = validate.sync('ab', hasLength({ min: 3 }))
+
+if (!ok) {
+  collection(violations).map(violation => {
+    switch (violation.violates.code) {
+      case 'length.unsupported-type':
+        return violation.violates.name
+      case 'length.min':
+        return violation.violates.args[0]
+    }
+  })
+}
+```
+
+Для вызовов вроде `hasLength({ min: 3 })` невозможные ветки, например `'length.max'` или `'length.range'`, больше не попадают в union violations.
+
 ## Зачем нужен глобальный реестр
 
 Точные literals на отдельных значениях полезны для локальной интроспекции.

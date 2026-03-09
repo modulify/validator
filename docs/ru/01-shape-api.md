@@ -190,13 +190,36 @@ Shapes позволяют выражать cross-field invariants без вне�
 
 ### `refine(...)`
 
-`refine(...)` добавляет синхронное object-level rule, которое запускается только после того, как базовая shape уже успешно провалидировалась как объект.
+`refine(...)` добавляет async-first object-level rule, которое запускается только после того, как базовая shape уже успешно провалидировалась как объект.
+
+```typescript
+const registration = shape({
+  email: isString,
+}).refine(async value => {
+  const taken = await users.has(value.email)
+
+  return taken
+    ? [{ path: ['email'], code: 'user.email.taken' }]
+    : []
+})
+```
+
+`refine(...)` специально остаётся тонким:
+
+- он принимает sync- и async-callbacks;
+- при успехе возвращает `[]`, `null` или `undefined`;
+- при ошибке возвращает один issue или массив issue;
+- `path` задаётся относительно текущей shape и по умолчанию равен `[]`;
+- `value` необязателен и по умолчанию берётся из значения объекта по этому относительному пути;
+- `code` остаётся machine-readable.
+
+Если нужен явно sync-safe object rule для `validate.sync(...)`, используйте `refine.sync(...)`:
 
 ```typescript
 const registration = shape({
   password: isString,
   confirmPassword: isString,
-}).refine(value => {
+}).refine.sync(value => {
   return value.password === value.confirmPassword
     ? []
     : [{
@@ -207,14 +230,7 @@ const registration = shape({
 })
 ```
 
-`refine(...)` специально остаётся тонким:
-
-- он только sync;
-- при успехе возвращает `[]`, `null` или `undefined`;
-- при ошибке возвращает один issue или массив issue;
-- `path` задаётся относительно текущей shape и по умолчанию равен `[]`;
-- `value` необязателен и по умолчанию берётся из значения объекта по этому относительному пути;
-- `code` остаётся machine-readable.
+`validate.sync(...)`, `matches.sync(...)` и `shape.check(...)` выбрасывают явную ошибку, если встречают async-callback в `refine(...)`.
 
 Сгенерированные violations используют:
 
@@ -242,6 +258,8 @@ const registration = shape({
 ```
 
 Позже это попадает в `describe(...)` в массив `rules`.
+
+Rules, зарегистрированные через async-first `refine(...)`, получают в этом массиве признак `async: true`.
 
 ### `fieldsMatch(...)`
 

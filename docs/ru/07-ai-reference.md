@@ -53,7 +53,8 @@ type ValidationTuple<T> =
 - `validate(...)` сужает `validated` в успешной ветке;
 - `validate(...)` не сужает исходную входную переменную;
 - `matches.sync(...)` — это API для сужения исходной переменной;
-- `violations` при успехе всегда пуст.
+- `violations` при успехе всегда пуст;
+- `validate(...)` — async-first API, а `validate.sync(...)` и `matches.sync(...)` остаются специализированными sync API.
 
 ## Семантика wrappers
 
@@ -90,6 +91,8 @@ type ValidationTuple<T> =
 
 - structural derivations намеренно сбрасывают object-level rules;
 - mode switches намеренно сохраняют object-level rules.
+- `.refine(...)` — async-first и может возвращать promise;
+- `.refine.sync(...)` — явно sync-safe API для object-level rules.
 
 ## Контракт violations
 

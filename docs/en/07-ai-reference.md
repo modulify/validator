@@ -53,7 +53,8 @@ Important consequences:
 - `validate(...)` narrows the `validated` tuple item in the success branch;
 - `validate(...)` does not narrow the original input variable;
 - `matches.sync(...)` is the API that narrows the original variable;
-- `violations` is always empty on success.
+- `violations` is always empty on success;
+- `validate(...)` is async-first, while `validate.sync(...)` and `matches.sync(...)` are specialized sync APIs.
 
 ## Wrapper Semantics
 
@@ -90,6 +91,8 @@ Important rule:
 
 - structural derivations intentionally drop object-level rules;
 - mode switches intentionally keep object-level rules.
+- `.refine(...)` is async-first and may return a promise;
+- `.refine.sync(...)` is the explicitly sync-safe object-level rule API.
 
 ## Violations Contract
 

@@ -23,6 +23,7 @@ export type {
   AllOfConstraintDescriptor,
   AssertionDescriptor,
   AssertionDescriptorConstraint,
+  AsyncObjectShapeRuleDescriptor,
   Constraint,
   ConstraintDescriptor,
   ConstraintDescriptorBase,
@@ -50,10 +51,15 @@ export type {
   KnownViolationCode,
   KnownViolationSubject,
   ObjectShapeFieldSelector,
+  ObjectShapeAsyncRefinement,
   ObjectShapeRefinement,
+  ObjectShapeRefineMethod,
+  ObjectShapeRefineMethodSync,
   ObjectShapeRefinementIssue,
+  ObjectShapeRefinementSync,
   ObjectShapeRuleDescriptor,
   ObjectShapeRuleDescriptorBase,
+  ObjectShapeSyncRefinement,
   OptionalValidator,
   RecordValidator,
   RecordConstraintDescriptor,
@@ -123,6 +129,8 @@ const collectViolations = async (
   return settle(value, path, validations)
 }
 
+collectViolations.sync = false as const
+
 const collectViolationsSync = (
   value: unknown,
   constraints: MaybeMany<Constraint>,
@@ -148,6 +156,8 @@ const collectViolationsSync = (
 
   return flatten(violations) as Violation[]
 }
+
+collectViolationsSync.sync = true as const
 
 function toResult<T, V extends Violation>(value: unknown, violations: V[]): ValidationTuple<T, V> {
   return violations.length === 0

@@ -317,10 +317,17 @@ export interface ObjectShapeRuleDescriptorBase<K extends string = string> {
   readonly metadata?: ConstraintMetadata
 }
 
-/** Generic compact descriptor for sync object-level rules added via `.refine(...)`. */
+/** Generic compact descriptor for sync-safe object-level rules. */
 export type GenericObjectShapeRuleDescriptor<
   K extends string = 'refine',
 > = ObjectShapeRuleDescriptorBase<K>
+
+/** Compact descriptor for object-level rules registered through the async-first `.refine(...)` API. */
+export interface AsyncObjectShapeRuleDescriptor<
+  K extends string = 'refine',
+> extends ObjectShapeRuleDescriptorBase<K> {
+  readonly async: true
+}
 
 /** Descriptor for the built-in `.fieldsMatch(...)` helper. */
 export interface FieldsMatchObjectShapeRuleDescriptor<
@@ -333,6 +340,7 @@ export interface FieldsMatchObjectShapeRuleDescriptor<
 /** Machine-readable summary of object-level rules registered on a shape. */
 export type ObjectShapeRuleDescriptor =
   | GenericObjectShapeRuleDescriptor<string>
+  | AsyncObjectShapeRuleDescriptor<string>
   | FieldsMatchObjectShapeRuleDescriptor
 
 /** Descriptor for `shape(...)`. */
@@ -464,18 +472,22 @@ export type InferConstraints<C> =
       : InferConstraint<C>
 
 /** Internal async runner signature used by composed validators. */
-export type Validate = (
+export type Validate = (( 
   value: unknown,
   constraints: MaybeMany<Constraint>,
   path?: PropertyKey[]
-) => Promise<Violation[]>
+) => Promise<Violation[]>) & {
+  readonly sync?: false
+}
 
 /** Internal sync runner signature used by composed validators. */
-export type ValidateSync = (
+export type ValidateSync = ((
   value: unknown,
   constraints: MaybeMany<Constraint>,
   path?: PropertyKey[]
-) => Violation[]
+) => Violation[]) & {
+  readonly sync: true
+}
 
 /** Internal union of async and sync runner signatures. */
 export type ValidateLike = Validate | ValidateSync
@@ -512,13 +524,75 @@ export type ObjectShapeRefinementIssue<
   value?: unknown;
 }
 
-/** Sync object-level rule that runs after the base shape has validated successfully. */
-export type ObjectShapeRefinement<
+/** Sync-safe object-level rule that runs after the base shape has validated successfully. */
+export type ObjectShapeRefinementSync<
   T,
   I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue,
 > = (
   value: T
 ) => MaybeMany<I | null | undefined> | null | undefined
+
+/** Async-first object-level rule that runs after the base shape has validated successfully. */
+export type ObjectShapeRefinement<
+  T,
+  I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue,
+> = (
+  value: T
+) => MaybePromise<MaybeMany<I | null | undefined> | null | undefined>
+
+/** Backward-compatible alias for the async-first object-level rule type. */
+export type ObjectShapeAsyncRefinement<
+  T,
+  I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue,
+> = ObjectShapeRefinement<T, I>
+
+/** Backward-compatible alias for the sync-safe object-level rule type. */
+export type ObjectShapeSyncRefinement<
+  T,
+  I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue,
+> = ObjectShapeRefinementSync<T, I>
+
+type AsyncObjectShapeRuleDescriptorOf<RD extends GenericObjectShapeRuleDescriptor<string>> =
+  Omit<RD, 'async'> & AsyncObjectShapeRuleDescriptor<RD['kind']>
+
+/** Explicitly sync-safe callable helper exposed as `shape(...).refine.sync(...)`. */
+export interface ObjectShapeRefineMethodSync<
+  D extends ObjectDescriptor = ObjectDescriptor,
+  M extends UnknownKeysMode = UnknownKeysMode,
+  R extends readonly ObjectShapeRuleDescriptor[] = readonly ObjectShapeRuleDescriptor[],
+  RI extends ObjectShapeRefinementIssue = never,
+> {
+  <const I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue>(
+    refinement: ObjectShapeRefinementSync<InferObjectDescriptor<D>, I>
+  ): ObjectShape<D, M, [...R, GenericObjectShapeRuleDescriptor<'refine'>], RI | I>;
+  <
+    const I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue,
+    const RD extends GenericObjectShapeRuleDescriptor<string> = GenericObjectShapeRuleDescriptor<'refine'>
+  >(
+    refinement: ObjectShapeRefinementSync<InferObjectDescriptor<D>, I>,
+    descriptor: RD
+  ): ObjectShape<D, M, [...R, RD], RI | I>;
+}
+
+/** Async-first callable shape helper exposed as `shape(...).refine(...)`. */
+export interface ObjectShapeRefineMethod<
+  D extends ObjectDescriptor = ObjectDescriptor,
+  M extends UnknownKeysMode = UnknownKeysMode,
+  R extends readonly ObjectShapeRuleDescriptor[] = readonly ObjectShapeRuleDescriptor[],
+  RI extends ObjectShapeRefinementIssue = never,
+> {
+  <const I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue>(
+    refinement: ObjectShapeRefinement<InferObjectDescriptor<D>, I>
+  ): ObjectShape<D, M, [...R, AsyncObjectShapeRuleDescriptor<'refine'>], RI | I>;
+  <
+    const I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue,
+    const RD extends GenericObjectShapeRuleDescriptor<string> = GenericObjectShapeRuleDescriptor<'refine'>
+  >(
+    refinement: ObjectShapeRefinement<InferObjectDescriptor<D>, I>,
+    descriptor: RD
+  ): ObjectShape<D, M, [...R, AsyncObjectShapeRuleDescriptorOf<RD>], RI | I>;
+  sync: ObjectShapeRefineMethodSync<D, M, R, RI>;
+}
 
 type KnownCodeViolation<C extends KnownViolationCode> = Violation<KnownViolationSubject<C>>
 
@@ -676,16 +750,7 @@ export interface ObjectShape<
 > extends Validator<InferObjectDescriptor<D>> {
   readonly descriptor: D;
   readonly unknownKeys: M;
-  refine<const I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue>(
-    refinement: ObjectShapeRefinement<InferObjectDescriptor<D>, I>
-  ): ObjectShape<D, M, [...R, GenericObjectShapeRuleDescriptor<'refine'>], RI | I>;
-  refine<
-    const I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue,
-    const RD extends GenericObjectShapeRuleDescriptor<string> = GenericObjectShapeRuleDescriptor<'refine'>
-  >(
-    refinement: ObjectShapeRefinement<InferObjectDescriptor<D>, I>,
-    descriptor: RD
-  ): ObjectShape<D, M, [...R, RD], RI | I>;
+  readonly refine: ObjectShapeRefineMethod<D, M, R, RI>;
   fieldsMatch<const K extends readonly [ObjectShapeFieldSelector, ObjectShapeFieldSelector]>(
     keys: K
   ): ObjectShape<D, M, [...R, FieldsMatchObjectShapeRuleDescriptor<K[0], K[1]>], RI | ObjectShapeRefinementIssue<'shape.fields.mismatch'>>;

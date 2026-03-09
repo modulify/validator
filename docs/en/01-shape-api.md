@@ -190,13 +190,36 @@ Shapes can express cross-field invariants without introducing a second schema la
 
 ### `refine(...)`
 
-`refine(...)` adds a synchronous object-level rule that runs only after the base shape has already validated successfully as an object.
+`refine(...)` adds an async-first object-level rule that runs only after the base shape has already validated successfully as an object.
+
+```typescript
+const registration = shape({
+  email: isString,
+}).refine(async value => {
+  const taken = await users.has(value.email)
+
+  return taken
+    ? [{ path: ['email'], code: 'user.email.taken' }]
+    : []
+})
+```
+
+`refine(...)` is intentionally thin:
+
+- it accepts sync or async callbacks;
+- it returns `[]`, `null`, or `undefined` when the rule passes;
+- it returns one issue or an array of issues when it fails;
+- `path` is relative to the current shape and defaults to `[]`;
+- `value` is optional and defaults to the object value at that relative path;
+- `code` stays machine-readable.
+
+If you need an explicitly sync-safe object rule for `validate.sync(...)`, use `refine.sync(...)`:
 
 ```typescript
 const registration = shape({
   password: isString,
   confirmPassword: isString,
-}).refine(value => {
+}).refine.sync(value => {
   return value.password === value.confirmPassword
     ? []
     : [{
@@ -207,14 +230,7 @@ const registration = shape({
 })
 ```
 
-`refine(...)` is intentionally thin:
-
-- it is sync-only;
-- it returns `[]`, `null`, or `undefined` when the rule passes;
-- it returns one issue or an array of issues when it fails;
-- `path` is relative to the current shape and defaults to `[]`;
-- `value` is optional and defaults to the object value at that relative path;
-- `code` stays machine-readable.
+`validate.sync(...)`, `matches.sync(...)`, and `shape.check(...)` throw explicitly if they encounter an async `refine(...)` callback.
 
 Produced violations use:
 
@@ -242,6 +258,8 @@ const registration = shape({
 ```
 
 This shows up later in `describe(...)` under the shape `rules` array.
+
+Rules registered through async-first `refine(...)` are marked with `async: true` in that descriptor array.
 
 ### `fieldsMatch(...)`
 

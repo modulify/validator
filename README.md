@@ -204,7 +204,7 @@ if (ok) {
 
 ## Shape API
 
-`shape(...)` is the reusable object-shape API. It validates nested record-like objects and exposes small immutable helpers such as `strict()`, `pick()`, `omit()`, `partial()`, `extend()`, `merge()`, `refine()`, and `fieldsMatch(...)`.
+`shape(...)` is the reusable object-shape API. It validates nested record-like objects and exposes small immutable helpers such as `strict()`, `pick()`, `omit()`, `partial()`, `extend()`, `merge()`, async-first `refine()`, explicit `refine.sync()`, and `fieldsMatch(...)`.
 
 ```typescript
 import {
@@ -274,6 +274,8 @@ In the current API this usually looks like:
 - schema composition with combinators such as `exact`, `optional`, `nullable`, `nullish`, `shape(...)`, `each(...)`;
 - typed validation through `validate(...)` or `validate.sync(...)`;
 - narrowing of the original sync variable through `matches.sync(...)`.
+
+`validate(...)` is the default async-first validation entrypoint. `validate.sync(...)` and `matches.sync(...)` are specialized sync APIs and will throw if they encounter async validators or async object-level `shape(...).refine(...)` rules.
 
 ## Violations
 

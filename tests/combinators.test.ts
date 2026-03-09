@@ -1,5 +1,6 @@
 import type {
   Assertion,
+  Validate,
   ViolationSubject,
 } from '~types'
 
@@ -755,7 +756,7 @@ describe('shape object api', () => {
     }]])
   })
 
-  test('refine adds sync object-level rules that run after structural validation', async () => {
+  test('refine keeps sync callbacks valid in the async-first API', async () => {
     const registration = shape({
       password: isString,
       confirmPassword: isString,
@@ -778,6 +779,72 @@ describe('shape object api', () => {
     }, []])
 
     expect(await validate({
+      password: 'secret',
+      confirmPassword: 'different',
+    }, registration)).toEqual([false, {
+      password: 'secret',
+      confirmPassword: 'different',
+    }, [{
+      value: 'different',
+      path: ['confirmPassword'],
+      violates: validatorSubject('shape', 'shape.fields.mismatch', [['password', 'confirmPassword']]),
+    }]])
+  })
+
+  test('refine awaits async object-level rules after structural validation', async () => {
+    const registration = shape({
+      email: isString,
+    }).refine(async value => {
+      await Promise.resolve()
+
+      return value.email === 'taken@example.com'
+        ? [{
+          path: ['email'],
+          code: 'user.email.taken',
+        }]
+        : []
+    })
+
+    expect(await validate({
+      email: 'free@example.com',
+    }, registration)).toEqual([true, {
+      email: 'free@example.com',
+    }, []])
+
+    expect(await validate({
+      email: 'taken@example.com',
+    }, registration)).toEqual([false, {
+      email: 'taken@example.com',
+    }, [{
+      value: 'taken@example.com',
+      path: ['email'],
+      violates: validatorSubject('shape', 'user.email.taken'),
+    }]])
+  })
+
+  test('refine.sync keeps the explicit sync path safe for validate.sync', () => {
+    const registration = shape({
+      password: isString,
+      confirmPassword: isString,
+    }).refine.sync(value => {
+      return value.password === value.confirmPassword
+        ? []
+        : [{
+          path: ['confirmPassword'],
+          code: 'shape.fields.mismatch',
+          args: [['password', 'confirmPassword']],
+        }]
+    })
+
+    expect(validate.sync({
+      password: 'secret',
+      confirmPassword: 'secret',
+    }, registration)).toEqual([true, {
+      password: 'secret',
+      confirmPassword: 'secret',
+    }, []])
+
+    expect(validate.sync({
       password: 'secret',
       confirmPassword: 'different',
     }, registration)).toEqual([false, {
@@ -908,6 +975,94 @@ describe('shape object api', () => {
       violates: assertionSubject('isString', 'type.string'),
     }]])
     expect(runs).toBe(0)
+  })
+
+  test('refine combines async field validation and async object-level validation in one flow', async () => {
+    const asyncDomain = createAsyncAssertion('asyncDomain', async value => {
+      return value === 'blocked@example.com'
+        ? {
+          value,
+          violates: assertionSubject('asyncDomain', 'user.email.blocked'),
+        }
+        : null
+    })
+    let runs = 0
+    const schema = shape({
+      email: [isString, asyncDomain],
+      confirmEmail: isString,
+    }).refine(async value => {
+      runs += 1
+      await Promise.resolve()
+
+      return value.email === value.confirmEmail
+        ? []
+        : [{
+          path: ['confirmEmail'],
+          code: 'shape.fields.mismatch',
+          args: [['email', 'confirmEmail']],
+        }]
+    })
+
+    expect(await validate({
+      email: 'blocked@example.com',
+      confirmEmail: 'blocked@example.com',
+    }, schema)).toEqual([false, {
+      email: 'blocked@example.com',
+      confirmEmail: 'blocked@example.com',
+    }, [{
+      value: 'blocked@example.com',
+      path: ['email'],
+      violates: assertionSubject('asyncDomain', 'user.email.blocked'),
+    }]])
+    expect(runs).toBe(0)
+
+    expect(await validate({
+      email: 'ok@example.com',
+      confirmEmail: 'other@example.com',
+    }, schema)).toEqual([false, {
+      email: 'ok@example.com',
+      confirmEmail: 'other@example.com',
+    }, [{
+      value: 'other@example.com',
+      path: ['confirmEmail'],
+      violates: validatorSubject('shape', 'shape.fields.mismatch', [['email', 'confirmEmail']]),
+    }]])
+    expect(runs).toBe(1)
+  })
+
+  test('validate.sync and matches.sync fail explicitly on async refine callbacks', () => {
+    const registration = shape({
+      email: isString,
+    }).refine(async () => {
+      return [{
+        code: 'shape.async.unreachable',
+      }]
+    })
+
+    expect(() => validate.sync({
+      email: 'taken@example.com',
+    }, registration)).toThrow('Found asynchronous object-level shape refinement')
+    expect(() => matches.sync({
+      email: 'taken@example.com',
+    }, registration)).toThrow('Found asynchronous object-level shape refinement')
+    expect(() => registration.check({
+      email: 'taken@example.com',
+    })).toThrow('Found asynchronous object-level shape refinement')
+  })
+
+  test('shape.run keeps async-first refine fallback for custom runners without a sync marker', () => {
+    const registration = shape({}).refine(() => [])
+    const bareRunner = ((value: unknown) => {
+      return value === null
+        ? [{
+          value,
+          path: [],
+          violates: validatorSubject('shape', 'type.record'),
+        }]
+        : []
+    }) as unknown as Validate
+
+    expect(registration.run(bareRunner, {}, [])).toEqual([[]])
   })
 
   test('fieldsMatch is a thin helper over refine for the common confirmation-field case', () => {

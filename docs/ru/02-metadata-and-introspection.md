@@ -182,7 +182,8 @@ const descriptor = describe(shape({
 Built-in примеры:
 
 - `fieldsMatch(...)` создаёт компактный `fieldsMatch` rule descriptor;
-- `refine(...)` может принимать собственный компактный rule descriptor object.
+- `refine(...)` может принимать собственный компактный rule descriptor object;
+- async-first rules из `refine(...)` помечаются через `async: true`.
 
 Так публичное descriptor tree остаётся стабильным и достаточно сериализуемым для tooling, при этом библиотека не пытается сериализовать произвольные callbacks.
 

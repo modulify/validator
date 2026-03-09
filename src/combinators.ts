@@ -1,4 +1,5 @@
 import type {
+  AsyncObjectShapeRuleDescriptor,
   Constraint,
   DiscriminatedUnionValidator,
   EachValidator,
@@ -6,14 +7,17 @@ import type {
   GenericObjectShapeRuleDescriptor,
   InferConstraints,
   MaybeMany,
+  MaybePromise,
   NullableValidator,
   NullishValidator,
+  ObjectShape,
   ObjectShapeFieldSelector,
   ObjectShapeRefinement,
+  ObjectShapeRefineMethod,
   ObjectShapeRefinementIssue,
+  ObjectShapeRefinementSync,
   ObjectShapeRuleDescriptor,
   MergeObjectDescriptors,
-  ObjectShape,
   OptionalValidator,
   PartialObjectDescriptor,
   RecordValidator,
@@ -52,10 +56,15 @@ export type InferShape<D extends ShapeDescriptor> = {
 }
 
 export type {
-  ObjectShapeFieldSelector,
+  AsyncObjectShapeRuleDescriptor,
   ObjectShape,
+  ObjectShapeFieldSelector,
   ObjectShapeRefinement,
+  ObjectShapeRefineMethod,
+  ObjectShapeRefineMethodSync,
   ObjectShapeRefinementIssue,
+  ObjectShapeRefinementSync,
+  ObjectShapeSyncRefinement,
   UnknownKeysMode,
 } from '~types'
 
@@ -90,6 +99,11 @@ type ShapeRefinement<
   I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue,
 > = ObjectShapeRefinement<T, I>
 
+type SyncShapeRefinement<
+  T,
+  I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue,
+> = ObjectShapeRefinementSync<T, I>
+
 const describeConstraintMap = <T extends Record<PropertyKey, MaybeMany<Constraint>>>(
   constraints: T
 ): Record<PropertyKey, ReturnType<typeof describe>> => {
@@ -112,6 +126,13 @@ const normalizeRuleDescriptor = <const R extends GenericObjectShapeRuleDescripto
     metadata: Object.freeze({ ...descriptor.metadata }),
   }
 }
+
+const normalizeAsyncRuleDescriptor = <const R extends GenericObjectShapeRuleDescriptor<string>>(
+  descriptor: R
+): Omit<R, 'async'> & AsyncObjectShapeRuleDescriptor<R['kind']> => ({
+  ...normalizeRuleDescriptor(descriptor),
+  async: true,
+})
 
 const passthrough = <const C extends MaybeMany<Constraint>, Accepted>(
   kind: 'optional' | 'nullable' | 'nullish',
@@ -212,16 +233,14 @@ const toPath = (selector: ObjectShapeFieldSelector): PropertyKey[] => Array.isAr
   ? [...selector]
   : [selector]
 
-const collectShapeRefinementViolations = <
+const toShapeRefinementViolations = <
   D extends ShapeDescriptor,
   RI extends ObjectShapeRefinementIssue,
 >(
   value: InferShape<D>,
   path: PropertyKey[],
-  refinements: readonly ShapeRefinement<InferShape<D>, RI>[]
-) => refinements.flatMap(refinement => {
-  const result = refinement(value)
-
+  result: MaybeMany<RI | null | undefined> | null | undefined
+) => {
   if (result === null || result === undefined) {
     return []
   }
@@ -242,7 +261,44 @@ const collectShapeRefinementViolations = <
         },
       }
     })
+}
+
+const collectShapeRefinementViolations = <
+  D extends ShapeDescriptor,
+  RI extends ObjectShapeRefinementIssue,
+>(
+  value: InferShape<D>,
+  path: PropertyKey[],
+  refinements: readonly ShapeRefinement<InferShape<D>, RI>[]
+) => refinements.flatMap(refinement => {
+  const result = refinement(value)
+
+  if (result instanceof Promise) {
+    throw new Error('Found asynchronous object-level shape refinement')
+  }
+
+  return toShapeRefinementViolations(value, path, result)
 })
+
+const collectAsyncShapeRefinementViolations = <
+  D extends ShapeDescriptor,
+  RI extends ObjectShapeRefinementIssue,
+>(
+  value: InferShape<D>,
+  path: PropertyKey[],
+  refinements: readonly ShapeRefinement<InferShape<D>, RI>[]
+): MaybePromise<Violation[]> => {
+  const results = refinements.map(refinement => refinement(value))
+
+  if (results.some(result => result instanceof Promise)) {
+    return Promise.all(results.map(result => Promise.resolve(result))).then(resolved => {
+      return resolved.flatMap(result => toShapeRefinementViolations(value, path, result))
+    })
+  }
+
+  return (results as Array<MaybeMany<RI | null | undefined> | null | undefined>)
+    .flatMap(result => toShapeRefinementViolations(value, path, result))
+}
 
 const createObjectShape = <
   const D extends ShapeDescriptor,
@@ -256,6 +312,35 @@ const createObjectShape = <
   rules: R
 ): ObjectShape<D, M, R, RI> => {
   const keys = keysOf(descriptor)
+  const addAsyncRefinement = <
+    const I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue,
+    const RD extends GenericObjectShapeRuleDescriptor<string> = GenericObjectShapeRuleDescriptor<'refine'>
+  >(
+    refinement: ShapeRefinement<InferShape<D>, I>,
+    ruleDescriptor: RD = { kind: 'refine' } as RD
+  ) => createObjectShape<D, M, [...R, Omit<RD, 'async'> & AsyncObjectShapeRuleDescriptor<RD['kind']>], RI | I>(
+    descriptor,
+    unknownKeys,
+    [...refinements, refinement] as readonly ShapeRefinement<InferShape<D>, RI | I>[],
+    [...rules, normalizeAsyncRuleDescriptor(ruleDescriptor)] as [...R, Omit<RD, 'async'> & AsyncObjectShapeRuleDescriptor<RD['kind']>]
+  )
+
+  const addSyncRefinement = <
+    const I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue,
+    const RD extends GenericObjectShapeRuleDescriptor<string> = GenericObjectShapeRuleDescriptor<'refine'>
+  >(
+    refinement: SyncShapeRefinement<InferShape<D>, I>,
+    ruleDescriptor: RD = { kind: 'refine' } as RD
+  ) => createObjectShape<D, M, [...R, RD], RI | I>(
+    descriptor,
+    unknownKeys,
+    [...refinements, refinement] as readonly ShapeRefinement<InferShape<D>, RI | I>[],
+    [...rules, normalizeRuleDescriptor(ruleDescriptor)] as [...R, RD]
+  )
+
+  const refine = Object.assign(addAsyncRefinement, {
+    sync: addSyncRefinement,
+  }) as ObjectShapeRefineMethod<D, M, R, RI>
 
   return attachConstraintDescriptor({
     descriptor,
@@ -294,7 +379,7 @@ const createObjectShape = <
 
           return structuralViolations.length > 0
             ? structuralViolations
-            : collectShapeRefinementViolations(value as InferShape<D>, path, refinements)
+            : Promise.resolve(collectAsyncShapeRefinementViolations(value as InferShape<D>, path, refinements))
         }) as Validation<F>]
       }
 
@@ -302,22 +387,13 @@ const createObjectShape = <
 
       return structuralViolations.length > 0
         ? validations
-        : [collectShapeRefinementViolations(value as InferShape<D>, path, refinements) as Validation<F>]
+        : [(
+          validate.sync
+            ? collectShapeRefinementViolations(value as InferShape<D>, path, refinements)
+            : collectAsyncShapeRefinementViolations(value as InferShape<D>, path, refinements)
+        ) as Validation<F>]
     },
-    refine<
-      const I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue,
-      const RD extends GenericObjectShapeRuleDescriptor<string> = GenericObjectShapeRuleDescriptor<'refine'>
-    >(
-      refinement: ShapeRefinement<InferShape<D>, I>,
-      ruleDescriptor: RD = { kind: 'refine' } as RD
-    ) {
-      return createObjectShape<D, M, [...R, RD], RI | I>(
-        descriptor,
-        unknownKeys,
-        [...refinements, refinement] as readonly ShapeRefinement<InferShape<D>, RI | I>[],
-        [...rules, normalizeRuleDescriptor(ruleDescriptor)] as [...R, RD]
-      )
-    },
+    refine,
     fieldsMatch<const K extends readonly [ObjectShapeFieldSelector, ObjectShapeFieldSelector]>(selectedKeys: K) {
       const [left, right] = selectedKeys
       const leftPath = toPath(left)
@@ -343,7 +419,7 @@ const createObjectShape = <
               code: 'shape.fields.mismatch',
               args: [selectedKeys],
             }]
-        }] as readonly ShapeRefinement<
+        }] as readonly SyncShapeRefinement<
           InferShape<D>,
           RI | ObjectShapeRefinementIssue<'shape.fields.mismatch'>
         >[],

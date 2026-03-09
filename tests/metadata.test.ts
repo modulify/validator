@@ -122,6 +122,7 @@ suite('describe', () => {
       { kind: 'fieldsMatch', selectors: ['password', 'confirmPassword'] },
       {
         kind: 'passwordConfirmation',
+        async: true,
         metadata: {
           fields: ['password', 'confirmPassword'],
         },

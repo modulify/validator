@@ -182,7 +182,8 @@ Instead, shapes keep lightweight rule descriptors in `rules`.
 Built-in examples:
 
 - `fieldsMatch(...)` produces a compact `fieldsMatch` rule descriptor;
-- `refine(...)` can accept a custom compact rule descriptor object.
+- `refine(...)` can accept a custom compact rule descriptor object;
+- async-first `refine(...)` rules are marked with `async: true`.
 
 This keeps the public descriptor tree stable and serializable enough for tooling, while avoiding the impossible task of serializing arbitrary callbacks.
 

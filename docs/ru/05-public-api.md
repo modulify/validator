@@ -77,6 +77,8 @@ type ValidationTuple<T> =
 - `ok` показывает, прошла ли валидация;
 - `validated` становится строго типизированным только в успешной ветке;
 - `violations` пуст при успехе и содержит структурированные ошибки при неуспехе.
+- `validate(...)` остаётся основным async-first entrypoint;
+- `validate.sync(...)` явно выбрасывает ошибку при async validators и async object-level rules из `shape(...).refine(...)`.
 
 ## Subpath predicates
 

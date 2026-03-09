@@ -1,8 +1,8 @@
 import type {
+  AsyncObjectShapeRuleDescriptor,
   AssertionDescriptor,
   ConstraintDescriptor,
   FieldsMatchObjectShapeRuleDescriptor,
-  GenericObjectShapeRuleDescriptor,
   ValidationTuple,
   ViolationCode,
 } from '@/index'
@@ -82,7 +82,7 @@ describe('metadata and introspection types', () => {
       assertType<'strict' | 'passthrough'>(descriptor.unknownKeys)
       assertType<readonly [
         FieldsMatchObjectShapeRuleDescriptor<'password', 'confirmPassword'>,
-        GenericObjectShapeRuleDescriptor<'passwordConfirmation'>,
+        AsyncObjectShapeRuleDescriptor<'passwordConfirmation'>,
       ]>(descriptor.rules)
     }
   })

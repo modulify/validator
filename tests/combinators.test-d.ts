@@ -1,4 +1,9 @@
 import type {
+  AsyncObjectShapeRuleDescriptor,
+  ObjectShapeAsyncRefinement,
+  ObjectShapeRefinement,
+  ObjectShapeRefinementSync,
+  ObjectShapeSyncRefinement,
   ValidationTuple,
   Violation,
 } from '@/index'
@@ -24,6 +29,7 @@ import {
   isNumber,
   isString,
   matches,
+  describe as describeConstraint,
   validate,
 } from '@/index'
 
@@ -210,7 +216,18 @@ describe('combinator types', () => {
     const registration = shape({
       password: isString,
       confirmPassword: isString,
-    }).refine(value => {
+    }).refine(async value => {
+      assertType<{
+        password: string;
+        confirmPassword: string;
+      }>(value)
+
+      return []
+    })
+    const syncRegistration = shape({
+      password: isString,
+      confirmPassword: isString,
+    }).refine.sync(value => {
       assertType<{
         password: string;
         confirmPassword: string;
@@ -221,13 +238,70 @@ describe('combinator types', () => {
 
     const confirmedRegistration = registration.fieldsMatch(['password', 'confirmPassword'])
 
+    assertType<Promise<ValidationTuple<{
+      password: string;
+      confirmPassword: string;
+    }>>>(validate({
+      password: 'secret',
+      confirmPassword: 'secret',
+    }, registration))
+
+    assertType<Promise<ValidationTuple<{
+      password: string;
+      confirmPassword: string;
+    }>>>(validate({
+      password: 'secret',
+      confirmPassword: 'secret',
+    }, confirmedRegistration))
+
     assertType<ValidationTuple<{
       password: string;
       confirmPassword: string;
     }>>(validate.sync({
       password: 'secret',
       confirmPassword: 'secret',
-    }, confirmedRegistration))
+    }, syncRegistration))
+  })
+
+  test('async refine descriptors are marked in shape metadata types', () => {
+    const schema = shape({
+      password: isString,
+      confirmPassword: isString,
+    }).refine(async () => [], {
+      kind: 'passwordConfirmation',
+    })
+
+    const descriptor = describeConstraint(schema)
+
+    if (descriptor.kind === 'shape') {
+      assertType<readonly [AsyncObjectShapeRuleDescriptor<'passwordConfirmation'>]>(descriptor.rules)
+    }
+  })
+
+  test('object-level refinement type aliases expose async-first and sync-safe names', () => {
+    assertType<ObjectShapeRefinement<{ password: string }>>(async value => {
+      assertType<string>(value.password)
+
+      return []
+    })
+
+    assertType<ObjectShapeRefinementSync<{ password: string }>>(value => {
+      assertType<string>(value.password)
+
+      return []
+    })
+
+    assertType<ObjectShapeAsyncRefinement<{ password: string }>>(async value => {
+      assertType<string>(value.password)
+
+      return []
+    })
+
+    assertType<ObjectShapeSyncRefinement<{ password: string }>>(value => {
+      assertType<string>(value.password)
+
+      return []
+    })
   })
 
   test('fieldsMatch also accepts nested path selectors without changing inferred shape types', () => {

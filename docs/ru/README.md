@@ -207,7 +207,7 @@ if (ok) {
 
 ## API объектных схем
 
-`shape(...)` — это переиспользуемый API объектных схем. Он валидирует вложенные record-like objects и предоставляет небольшой неизменяемый API вроде `strict()`, `pick()`, `omit()`, `partial()`, `extend()`, `merge()`, `refine()` и `fieldsMatch(...)`.
+`shape(...)` — это переиспользуемый API объектных схем. Он валидирует вложенные record-like objects и предоставляет небольшой неизменяемый API вроде `strict()`, `pick()`, `omit()`, `partial()`, `extend()`, `merge()`, async-first `refine()`, явного `refine.sync()` и `fieldsMatch(...)`.
 
 ```typescript
 import {
@@ -277,6 +277,8 @@ const node = describe(registration)
 - композиция схем через combinators вроде `exact`, `optional`, `nullable`, `nullish`, `shape(...)`, `each(...)`;
 - типизированная валидация через `validate(...)` или `validate.sync(...)`;
 - narrowing исходной переменной в sync-коде через `matches.sync(...)`.
+
+`validate(...)` — основной async-first entrypoint. `validate.sync(...)` и `matches.sync(...)` остаются специализированными sync API и выбрасывают ошибку, если встречают async validators или async object-level rules из `shape(...).refine(...)`.
 
 ## Нарушения
 

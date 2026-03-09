@@ -77,6 +77,8 @@ Practical meaning:
 - `ok` tells whether validation succeeded;
 - `validated` becomes strongly typed only in the success branch;
 - `violations` is empty on success and contains structured failures on error.
+- `validate(...)` is the default async-first entrypoint;
+- `validate.sync(...)` throws explicitly when it encounters async validators or async object-level `shape(...).refine(...)` rules.
 
 ## Predicates Subpath
 

@@ -12,11 +12,18 @@ import {
   exact,
   hasLength,
   isBoolean,
+  isBigInt,
+  isBlob,
   isDate,
   isDefined,
   isEmail,
+  isFile,
+  isFunction,
+  isMap,
+  isNaN,
   isNull,
   isNumber,
+  isSet,
   isString,
   isSymbol,
   meta,
@@ -244,6 +251,22 @@ describe('toJsonSchema', () => {
     )
   })
 
+  test.each([
+    [isBigInt, 'bigint values cannot be represented in JSON Schema'],
+    [isBlob, 'Blob instances do not have a stable JSON Schema representation'],
+    [isFile, 'File instances do not have a stable JSON Schema representation'],
+    [isFunction, 'functions cannot be represented in JSON Schema'],
+    [isMap, 'Map instances do not have a stable JSON Schema representation'],
+    [isNaN, 'NaN cannot be represented in JSON Schema'],
+    [isSet, 'Set instances do not have a stable JSON Schema representation'],
+  ] as const)('throws in strict mode for unsupported built-in assertion %s', (assertion, reason) => {
+    expect(() => toJsonSchema(shape({
+      value: assertion,
+    }), { mode: 'strict' })).toThrowError(
+      `Cannot export assertion at value: ${reason}`
+    )
+  })
+
   test('exports remaining supported assertion variants, metadata primitives and optionality inference', () => {
     const hidden = Symbol('hidden')
 
@@ -399,7 +422,14 @@ describe('toJsonSchema', () => {
       invalidMinLength: hasLength({ min: -1 as never }),
       invalidMaxLength: hasLength({ max: -1 as never }),
       invalidRangeLength: hasLength({ range: [1, -1] as never }),
+      bigInt: isBigInt,
+      blob: isBlob,
       date: isDate,
+      file: isFile,
+      fn: isFunction,
+      map: isMap,
+      nan: isNaN,
+      set: isSet,
       symbol: isSymbol,
       validator: bareValidator,
       weirdDescriptor,
@@ -418,7 +448,14 @@ describe('toJsonSchema', () => {
         invalidMinLength: {},
         invalidMaxLength: {},
         invalidRangeLength: {},
+        bigInt: {},
+        blob: {},
         date: {},
+        file: {},
+        fn: {},
+        map: {},
+        nan: {},
+        set: {},
         symbol: {},
         validator: {},
         weirdDescriptor: {},
@@ -433,7 +470,14 @@ describe('toJsonSchema', () => {
         'invalidMinLength',
         'invalidMaxLength',
         'invalidRangeLength',
+        'bigInt',
+        'blob',
         'date',
+        'file',
+        'fn',
+        'map',
+        'nan',
+        'set',
         'symbol',
         'validator',
         'weirdDescriptor',

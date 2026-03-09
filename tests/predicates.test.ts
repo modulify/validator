@@ -4,13 +4,20 @@ import {
   hasProperty,
   isArray,
   isBoolean,
+  isBigInt,
+  isBlob,
   isDate,
   isEmail,
   isExact,
+  isFile,
+  isFunction,
+  isMap,
+  isNaN,
   isNull,
   isNumber,
   isObject,
   isRecord,
+  isSet,
   isShape,
   isString,
   isSymbol,
@@ -73,6 +80,32 @@ describe('isBoolean', () => {
   })
 })
 
+describe('isBigInt', () => {
+  test('returns true when a value is a bigint', () => {
+    expect(isBigInt(BigInt(0))).toBe(true)
+    expect(isBigInt(BigInt(42))).toBe(true)
+  })
+
+  test('returns false when a value is not a bigint', () => {
+    expect(isBigInt(42)).toBe(false)
+    expect(isBigInt('42')).toBe(false)
+    expect(isBigInt(null)).toBe(false)
+  })
+})
+
+describe('isBlob', () => {
+  test('returns true when a value is a Blob', () => {
+    expect(isBlob(new Blob())).toBe(true)
+    expect(isBlob(new Blob(['payload'], { type: 'text/plain' }))).toBe(true)
+  })
+
+  test('returns false when a value is not a Blob', () => {
+    expect(isBlob({})).toBe(false)
+    expect(isBlob('blob')).toBe(false)
+    expect(isBlob(null)).toBe(false)
+  })
+})
+
 describe('isDate', () => {
   test('returns true when a value is a valid Date object', () => {
     expect(isDate(new Date())).toBe(true)
@@ -127,6 +160,58 @@ describe('isExact', () => {
     expect(isExact(null)(undefined)).toBe(false)
     expect(isExact(undefined)(null)).toBe(false)
     expect(isExact(Symbol('s1'))(Symbol('s1'))).toBe(false)
+  })
+})
+
+describe('isFile', () => {
+  test('returns true when a value is a File', () => {
+    expect(isFile(new File(['payload'], 'test.txt'))).toBe(true)
+  })
+
+  test('returns false when a value is not a File', () => {
+    expect(isFile(new Blob(['payload']))).toBe(false)
+    expect(isFile({ name: 'test.txt' })).toBe(false)
+    expect(isFile(null)).toBe(false)
+  })
+})
+
+describe('isFunction', () => {
+  test('returns true when a value is a function', () => {
+    expect(isFunction(() => null)).toBe(true)
+    expect(isFunction(function named () { return null })).toBe(true)
+    expect(isFunction(class TestClass {})).toBe(true)
+  })
+
+  test('returns false when a value is not a function', () => {
+    expect(isFunction({})).toBe(false)
+    expect(isFunction('callable')).toBe(false)
+    expect(isFunction(null)).toBe(false)
+  })
+})
+
+describe('isMap', () => {
+  test('returns true when a value is a Map', () => {
+    expect(isMap(new Map())).toBe(true)
+    expect(isMap(new Map([['a', 1]]))).toBe(true)
+  })
+
+  test('returns false when a value is not a Map', () => {
+    expect(isMap({})).toBe(false)
+    expect(isMap([['a', 1]])).toBe(false)
+    expect(isMap(null)).toBe(false)
+  })
+})
+
+describe('isNaN', () => {
+  test('returns true only for NaN', () => {
+    expect(isNaN(Number.NaN)).toBe(true)
+    expect(isNaN(0 / 0)).toBe(true)
+  })
+
+  test('returns false for other values', () => {
+    expect(isNaN(0)).toBe(false)
+    expect(isNaN(Infinity)).toBe(false)
+    expect(isNaN('NaN')).toBe(false)
   })
 })
 
@@ -195,6 +280,19 @@ describe('isRecord', () => {
     class A {}
 
     expect(isRecord(new A())).toBe(false)
+  })
+})
+
+describe('isSet', () => {
+  test('returns true when a value is a Set', () => {
+    expect(isSet(new Set())).toBe(true)
+    expect(isSet(new Set([1, 2, 3]))).toBe(true)
+  })
+
+  test('returns false when a value is not a Set', () => {
+    expect(isSet([])).toBe(false)
+    expect(isSet({ values: [1, 2, 3] })).toBe(false)
+    expect(isSet(null)).toBe(false)
   })
 })
 

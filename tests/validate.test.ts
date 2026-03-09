@@ -27,9 +27,33 @@ import { validate } from '@/index'
 const expectProfile = <T extends { name: string; tags: string[] }>(value: T) => value
 const valid = <T>(value: T) => [true, value, []]
 const invalid = <T>(value: T, violations: unknown[]) => [false, value, violations]
-const assertionSubject = (name: string, code: string, args: unknown[] = []): ViolationSubject => ({ kind: 'assertion', name, code, args })
-const validatorSubject = (name: string, code: string, args: unknown[] = []): ViolationSubject => ({ kind: 'validator', name, code, args })
-const runtimeSubject = (name: string, code: string, args: unknown[] = []): ViolationSubject => ({ kind: 'runtime', name, code, args })
+const assertionSubject = <C extends string, A extends readonly unknown[] = readonly unknown[]>(
+  name: string,
+  code: C,
+  args: A = [] as unknown as A
+): ViolationSubject<A, 'assertion', C> => ({ kind: 'assertion', name, code, args }) as unknown as ViolationSubject<
+  A,
+  'assertion',
+  C
+>
+const validatorSubject = <C extends string, A extends readonly unknown[] = readonly unknown[]>(
+  name: string,
+  code: C,
+  args: A = [] as unknown as A
+): ViolationSubject<A, 'validator', C> => ({ kind: 'validator', name, code, args }) as unknown as ViolationSubject<
+  A,
+  'validator',
+  C
+>
+const runtimeSubject = <C extends string, A extends readonly unknown[] = readonly unknown[]>(
+  name: string,
+  code: C,
+  args: A = [] as unknown as A
+): ViolationSubject<A, 'runtime', C> => ({ kind: 'runtime', name, code, args }) as unknown as ViolationSubject<
+  A,
+  'runtime',
+  C
+>
 
 const createAsyncAssertion = (
   name: string,

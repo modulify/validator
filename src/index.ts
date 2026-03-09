@@ -1,6 +1,7 @@
 import type {
   Constraint,
   InferConstraints,
+  InferMaybeManyViolations,
   MaybeMany,
   Recursive,
   ValidationTuple,
@@ -27,6 +28,8 @@ export type {
   ConstraintDescriptorBase,
   ConstraintMetadata,
   CustomConstraintDescriptor,
+  DescribeAssertionConstraint,
+  DescribeAssertionConstraintTuple,
   DescribeConstraint,
   DescribeConstraintTuple,
   DescribeMaybeMany,
@@ -38,10 +41,14 @@ export type {
   GenericObjectShapeRuleDescriptor,
   InferConstraint,
   InferConstraints,
+  InferConstraintViolations,
+  InferMaybeManyViolations,
   DiscriminatedUnionConstraintDescriptor,
   EachConstraintDescriptor,
   NullableValidator,
   NullishValidator,
+  KnownViolationCode,
+  KnownViolationSubject,
   ObjectShapeFieldSelector,
   ObjectShapeRefinement,
   ObjectShapeRefinementIssue,
@@ -56,7 +63,14 @@ export type {
   UnionValidator,
   ValidationFailure,
   ValidationSuccess,
+  ViolationArgs,
+  ViolationCode,
+  ViolationCodeEntry,
+  ViolationCodeRegistry,
+  ViolationEntry,
   ViolationKind,
+  ViolationKindOf,
+  ViolationNameOf,
   ViolationSubject,
   ViolationTreeNode,
   UnionConstraintDescriptor,
@@ -135,7 +149,7 @@ const collectViolationsSync = (
   return flatten(violations) as Violation[]
 }
 
-function toResult<T>(value: unknown, violations: Violation[]): ValidationTuple<T> {
+function toResult<T, V extends Violation>(value: unknown, violations: V[]): ValidationTuple<T, V> {
   return violations.length === 0
     ? [true, value as T, []]
     : [false, value, violations]
@@ -184,19 +198,25 @@ export const validate = Object.assign(
   async <const C extends MaybeMany<Constraint>>(
     value: unknown,
     constraints: C
-  ): Promise<ValidationTuple<InferConstraints<C>>> => {
+  ): Promise<ValidationTuple<InferConstraints<C>, InferMaybeManyViolations<C>>> => {
     const violations = await collectViolations(value, constraints)
 
-    return toResult<InferConstraints<C>>(value, violations)
+    return toResult<InferConstraints<C>, InferMaybeManyViolations<C>>(
+      value,
+      violations as InferMaybeManyViolations<C>[]
+    )
   },
   {
     sync<const C extends MaybeMany<Constraint>>(
       value: unknown,
       constraints: C
-    ): ValidationTuple<InferConstraints<C>> {
+    ): ValidationTuple<InferConstraints<C>, InferMaybeManyViolations<C>> {
       const violations = collectViolationsSync(value, constraints)
 
-      return toResult<InferConstraints<C>>(value, violations)
+      return toResult<InferConstraints<C>, InferMaybeManyViolations<C>>(
+        value,
+        violations as InferMaybeManyViolations<C>[]
+      )
     },
   }
 )

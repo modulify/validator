@@ -76,14 +76,19 @@ type InferDiscriminatedUnion<T extends VariantMap> = {
 type StrictObjectShape<
   D extends ShapeDescriptor,
   R extends readonly ObjectShapeRuleDescriptor[] = readonly ObjectShapeRuleDescriptor[],
-> = ObjectShape<D, 'strict', R>
+  RI extends ObjectShapeRefinementIssue = never,
+> = ObjectShape<D, 'strict', R, RI>
 
 type PassthroughObjectShape<
   D extends ShapeDescriptor,
   R extends readonly ObjectShapeRuleDescriptor[] = readonly ObjectShapeRuleDescriptor[],
-> = ObjectShape<D, 'passthrough', R>
+  RI extends ObjectShapeRefinementIssue = never,
+> = ObjectShape<D, 'passthrough', R, RI>
 
-type ShapeRefinement<T> = ObjectShapeRefinement<T>
+type ShapeRefinement<
+  T,
+  I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue,
+> = ObjectShapeRefinement<T, I>
 
 const describeConstraintMap = <T extends Record<PropertyKey, MaybeMany<Constraint>>>(
   constraints: T
@@ -207,10 +212,13 @@ const toPath = (selector: ObjectShapeFieldSelector): PropertyKey[] => Array.isAr
   ? [...selector]
   : [selector]
 
-const collectShapeRefinementViolations = <D extends ShapeDescriptor>(
+const collectShapeRefinementViolations = <
+  D extends ShapeDescriptor,
+  RI extends ObjectShapeRefinementIssue,
+>(
   value: InferShape<D>,
   path: PropertyKey[],
-  refinements: readonly ShapeRefinement<InferShape<D>>[]
+  refinements: readonly ShapeRefinement<InferShape<D>, RI>[]
 ) => refinements.flatMap(refinement => {
   const result = refinement(value)
 
@@ -219,7 +227,7 @@ const collectShapeRefinementViolations = <D extends ShapeDescriptor>(
   }
 
   return arrayify(result)
-    .filter((issue): issue is ObjectShapeRefinementIssue => issue !== null && issue !== undefined)
+    .filter((issue): issue is RI => issue !== null && issue !== undefined)
     .map(issue => {
       const issuePath = issue.path ? [...issue.path] : []
 
@@ -240,12 +248,13 @@ const createObjectShape = <
   const D extends ShapeDescriptor,
   const M extends UnknownKeysMode,
   const R extends readonly ObjectShapeRuleDescriptor[],
+  RI extends ObjectShapeRefinementIssue = never,
 >(
   descriptor: D,
   unknownKeys: M,
-  refinements: readonly ShapeRefinement<InferShape<D>>[],
+  refinements: readonly ShapeRefinement<InferShape<D>, RI>[],
   rules: R
-): ObjectShape<D, M, R> => {
+): ObjectShape<D, M, R, RI> => {
   const keys = keysOf(descriptor)
 
   return attachConstraintDescriptor({
@@ -295,14 +304,17 @@ const createObjectShape = <
         ? validations
         : [collectShapeRefinementViolations(value as InferShape<D>, path, refinements) as Validation<F>]
     },
-    refine<const RD extends GenericObjectShapeRuleDescriptor<string>>(
-      refinement: ShapeRefinement<InferShape<D>>,
+    refine<
+      const I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue,
+      const RD extends GenericObjectShapeRuleDescriptor<string> = GenericObjectShapeRuleDescriptor<'refine'>
+    >(
+      refinement: ShapeRefinement<InferShape<D>, I>,
       ruleDescriptor: RD = { kind: 'refine' } as RD
     ) {
-      return createObjectShape(
+      return createObjectShape<D, M, [...R, RD], RI | I>(
         descriptor,
         unknownKeys,
-        [...refinements, refinement],
+        [...refinements, refinement] as readonly ShapeRefinement<InferShape<D>, RI | I>[],
         [...rules, normalizeRuleDescriptor(ruleDescriptor)] as [...R, RD]
       )
     },
@@ -315,7 +327,12 @@ const createObjectShape = <
         selectors: [left, right],
       } as FieldsMatchObjectShapeRuleDescriptor<K[0], K[1]>
 
-      return createObjectShape(
+      return createObjectShape<
+        D,
+        M,
+        [...R, FieldsMatchObjectShapeRuleDescriptor<K[0], K[1]>],
+        RI | ObjectShapeRefinementIssue<'shape.fields.mismatch'>
+      >(
         descriptor,
         unknownKeys,
         [...refinements, value => {
@@ -326,14 +343,17 @@ const createObjectShape = <
               code: 'shape.fields.mismatch',
               args: [selectedKeys],
             }]
-        }],
+        }] as readonly ShapeRefinement<
+          InferShape<D>,
+          RI | ObjectShapeRefinementIssue<'shape.fields.mismatch'>
+        >[],
         [...rules, ruleDescriptor] as [...R, FieldsMatchObjectShapeRuleDescriptor<K[0], K[1]>]
       )
     },
-    strict(): StrictObjectShape<D> {
+    strict(): StrictObjectShape<D, R, RI> {
       return createObjectShape(descriptor, 'strict', refinements, rules)
     },
-    passthrough(): PassthroughObjectShape<D> {
+    passthrough(): PassthroughObjectShape<D, R, RI> {
       return createObjectShape(descriptor, 'passthrough', refinements, rules)
     },
     pick<const K extends readonly (keyof D)[]>(selectedKeys: K) {
@@ -349,7 +369,7 @@ const createObjectShape = <
       return createObjectShape(extendDescriptor(descriptor, extension), unknownKeys, [], [])
     },
     merge<const E extends ShapeDescriptor, OM extends UnknownKeysMode, OR extends readonly ObjectShapeRuleDescriptor[]>(
-      shape: ObjectShape<E, OM, OR>
+      shape: ObjectShape<E, OM, OR, ObjectShapeRefinementIssue>
     ) {
       return createObjectShape(extendDescriptor(descriptor, shape.descriptor), unknownKeys, [], [])
     },
@@ -543,7 +563,7 @@ export const record = <const C extends MaybeMany<Constraint>>(constraints: C): R
   values: describeConstraints(constraints),
 }))
 
-export const shape = <const D extends ShapeDescriptor>(descriptor: D): ObjectShape<D, 'passthrough', []> => {
+export const shape = <const D extends ShapeDescriptor>(descriptor: D): ObjectShape<D, 'passthrough', [], never> => {
   return createObjectShape(descriptor, 'passthrough', [], [])
 }
 

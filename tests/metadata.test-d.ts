@@ -4,6 +4,7 @@ import type {
   FieldsMatchObjectShapeRuleDescriptor,
   GenericObjectShapeRuleDescriptor,
   ValidationTuple,
+  ViolationCode,
 } from '@/index'
 
 import {
@@ -52,10 +53,15 @@ describe('metadata and introspection types', () => {
       if (descriptor.child.kind === 'assertion') {
         assertType<string>(descriptor.child.name)
         assertType<boolean>(descriptor.child.bail)
-        assertType<string | undefined>(descriptor.child.code)
-        assertType<readonly unknown[] | undefined>(descriptor.child.args)
+        assertType<'type.string'>(descriptor.child.code)
+        assertType<[]>(descriptor.child.args)
       }
     }
+  })
+
+  test('violation code registry exposes built-in code unions', () => {
+    assertType<ViolationCode>('type.string')
+    assertType<ViolationCode>('shape.unknown-key')
   })
 
   test('shape descriptors expose fields and rule descriptors', () => {

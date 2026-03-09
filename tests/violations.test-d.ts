@@ -39,7 +39,7 @@ describe('violation collection types', () => {
 
     assertType<ViolationCollection<EmailViolation>>(errors)
     assertType<ViolationCollection<EmailViolation>>(emailErrors)
-    assertType<string[]>(emailErrors.map(violation => violation.violates.code))
+    assertType<'type.string'[]>(emailErrors.map(violation => violation.violates.code))
     assertType<ViolationTreeNode<EmailViolation>>(tree)
     assertType<ViolationTreeNode<EmailViolation> | undefined>(emailNode)
     assertType<ViolationCollection<EmailViolation>>(tree.self)

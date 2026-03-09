@@ -19,6 +19,8 @@ The root package exports:
 - `validate`
 - `validate.sync`
 - `matches.sync`
+- `Guard`
+- `Refinement`
 - `meta`
 - `describe`
 - `custom`
@@ -33,14 +35,18 @@ Use the root package when you need the main validation API, composed validators,
 
 The root package includes:
 
-- low-level assertion construction through `assert(...)`
-- built-in assertions such as `isString`, `isNumber`, `isBoolean`, `isNull`, `isEmail`, `hasLength(...)`, `oneOf(...)`
+- low-level assertion construction through `assert(...)` and `refine(...)`
+- built-in guard assertions such as `isString`, `isNumber`, `isBoolean`, `isNull`, `isEmail`, `oneOf(...)`
+- built-in refinement assertions such as `hasLength(...)`, `hasSize(...)`, `hasPattern(...)`, `startsWith(...)`, `hasValue(...)`, `multipleOf(...)`
 - structural combinators such as `shape(...)`, `each(...)`, `tuple(...)`, `record(...)`
 - wrapper combinators such as `optional(...)`, `nullable(...)`, `nullish(...)`
 - branching combinators such as `union(...)` and `discriminatedUnion(...)`
 - exact-value matching through `exact(...)`
 
 This is the main runtime-facing API surface of the library.
+
+Sequential assertion arrays are stage-aware: a compatible tuple such as `[isString, hasLength({ min: 3 })]` is supported directly, while incompatible combinations are rejected by the type system.
+Refinement assertions are staged helpers, so `validate(...)` and `matches.sync(...)` expect them to appear after a compatible guard instead of being passed on their own.
 
 ## Metadata And Introspection
 

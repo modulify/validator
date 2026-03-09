@@ -6,6 +6,8 @@ import {
   test,
 } from 'vitest'
 
+import type { Assertion } from '~types'
+
 import {
   assert,
   custom,
@@ -18,11 +20,16 @@ import {
   meta,
   optional,
   record,
+  refine,
   shape,
   tuple,
   union,
   validate,
 } from '@/index'
+import {
+  checkRefinementAssertion,
+  runRefinementAssertion,
+} from '@/assert'
 
 suite('meta', () => {
   test('attaches metadata without changing validation semantics or mutating the source constraint', () => {
@@ -304,6 +311,96 @@ suite('describe', () => {
       code: 'isFiniteCustom',
       args: [],
       constraints: [],
+    })
+  })
+})
+
+suite('refinement helpers', () => {
+  test('checks staged refinements through the internal fast-path', () => {
+    const minLength = refine({
+      name: 'minLength',
+      bail: true,
+    }, [
+      [(value: string) => value.length, (length: number, min: number) => length >= min, 'length.min', 2],
+    ] as const)
+
+    expect(checkRefinementAssertion(minLength, 'abcd')).toBe(true)
+    expect(checkRefinementAssertion(minLength, 'a')).toBe(false)
+  })
+
+  test('falls back to assertion.check when no internal refinement helper is attached', () => {
+    const fallback = (((value: unknown) => value === 'ok' ? null : {
+      value,
+      violates: {
+        kind: 'assertion' as const,
+        name: 'fallback',
+        code: 'fallback',
+        args: [],
+      },
+    }) as unknown) as Assertion
+
+    Object.defineProperties(fallback, {
+      name: {
+        configurable: true,
+        value: 'fallback',
+      },
+      bail: {
+        enumerable: true,
+        value: true,
+      },
+      constraints: {
+        enumerable: true,
+        value: [],
+      },
+      check: {
+        enumerable: true,
+        value: (value: unknown): value is 'ok' => value === 'ok',
+      },
+    })
+
+    expect(checkRefinementAssertion(fallback, 'ok')).toBe(true)
+    expect(checkRefinementAssertion(fallback, 'nope')).toBe(false)
+  })
+
+  test('falls back to direct assertion execution when no internal refinement runner is attached', () => {
+    const fallback = (((value: unknown) => value === 'ok' ? null : {
+      value,
+      violates: {
+        kind: 'assertion' as const,
+        name: 'fallback',
+        code: 'fallback',
+        args: [],
+      },
+    }) as unknown) as Assertion
+
+    Object.defineProperties(fallback, {
+      name: {
+        configurable: true,
+        value: 'fallback',
+      },
+      bail: {
+        enumerable: true,
+        value: true,
+      },
+      constraints: {
+        enumerable: true,
+        value: [],
+      },
+      check: {
+        enumerable: true,
+        value: (value: unknown): value is 'ok' => value === 'ok',
+      },
+    })
+
+    expect(runRefinementAssertion(fallback, 'ok')).toBeNull()
+    expect(runRefinementAssertion(fallback, 'nope')).toEqual({
+      value: 'nope',
+      violates: {
+        kind: 'assertion',
+        name: 'fallback',
+        code: 'fallback',
+        args: [],
+      },
     })
   })
 })

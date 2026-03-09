@@ -64,15 +64,16 @@ The same precision now flows into `validate(...)` for parameterized built-ins.
 import {
   collection,
   hasLength,
+  isString,
   validate,
 } from '@modulify/validator'
 
-const [ok, , violations] = validate.sync('ab', hasLength({ min: 3 }))
+const [ok, , violations] = validate.sync('ab', [isString, hasLength({ min: 3 })])
 
 if (!ok) {
   collection(violations).map(violation => {
     switch (violation.violates.code) {
-      case 'length.unsupported-type':
+      case 'type.string':
         return violation.violates.name
       case 'length.min':
         return violation.violates.args[0]
@@ -81,7 +82,7 @@ if (!ok) {
 }
 ```
 
-For calls like `hasLength({ min: 3 })`, impossible branches such as `'length.max'` or `'length.range'` are no longer carried into the violation union.
+For staged calls like `[isString, hasLength({ min: 3 })]`, impossible branches such as `'length.max'` or `'length.range'` are no longer carried into the violation union, and the unsupported-type branch stays on the descriptor side instead of leaking into staged validation.
 
 ## What The Global Registry Solves
 

@@ -273,10 +273,14 @@ const node = describe(registration)
 
 В текущем API это обычно выглядит так:
 
-- leaf checks через assertions вроде `isString`, `isDefined`, `hasLength`, `oneOf`;
+- guard assertions вроде `isString`, `isNumber`, `isDefined`, `oneOf(...)` задают базовый домен значения;
+- refinement assertions вроде `hasLength(...)`, `hasPattern(...)`, `startsWith(...)`, `hasValue(...)`, `multipleOf(...)` проверяют свойства уже внутри этого домена;
 - композиция схем через combinators вроде `exact`, `optional`, `nullable`, `nullish`, `shape(...)`, `each(...)`;
 - типизированная валидация через `validate(...)` или `validate.sync(...)`;
 - narrowing исходной переменной в sync-коде через `matches.sync(...)`.
+
+Последовательные массивы assertions теперь stage-aware. Кортеж вроде `[isString, hasLength({ min: 3 })]` типизируется, а несовместимые комбинации вроде `[isNumber, hasLength({ min: 3 })]` TypeScript отсекает.
+Refinement assertions не предполагаются для одиночной передачи в `validate(...)` или `matches.sync(...)`.
 
 `validate(...)` — основной async-first entrypoint. `validate.sync(...)` и `matches.sync(...)` остаются специализированными sync API и выбрасывают ошибку, если встречают async validators или async object-level rules из `shape(...).refine(...)`.
 

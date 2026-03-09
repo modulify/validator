@@ -82,18 +82,6 @@ describe('hasLength', () => {
     })
   })
 
-  test.each([
-    { options: { exact: 3 }, value: {} },
-    { options: { exact: 3 }, value: null },
-    { options: { max: 5 }, value: undefined },
-    { options: { min: 3 }, value: new Date() },
-    { options: { max: 5, min: 3 }, value: new Blob() },
-  ])('unsupported #%#', ({ options, value }) => {
-    expect(hasLength(options)(value)).toEqual({
-      value,
-      violates: assertionSubject('hasLength', 'length.unsupported-type'),
-    })
-  })
 })
 
 describe('oneOf', () => {
@@ -158,10 +146,6 @@ describe('string assertions', () => {
       value: 'Nick',
       violates: assertionSubject('hasPattern', 'string.pattern', [/^[a-z]+$/]),
     })
-    expect(hasPattern(/^[a-z]+$/)(1)).toEqual({
-      value: 1,
-      violates: assertionSubject('hasPattern', 'string.unsupported-type'),
-    })
   })
 
   test('startsWith', () => {
@@ -171,10 +155,6 @@ describe('string assertions', () => {
       value: 'suffix',
       violates: assertionSubject('startsWith', 'string.starts-with', ['pre']),
     })
-    expect(startsWith('pre')(false)).toEqual({
-      value: false,
-      violates: assertionSubject('startsWith', 'string.unsupported-type'),
-    })
   })
 
   test('endsWith', () => {
@@ -183,10 +163,6 @@ describe('string assertions', () => {
     expect(endsWith('.ts')('index.js')).toEqual({
       value: 'index.js',
       violates: assertionSubject('endsWith', 'string.ends-with', ['.ts']),
-    })
-    expect(endsWith('.ts')(null)).toEqual({
-      value: null,
-      violates: assertionSubject('endsWith', 'string.unsupported-type'),
     })
   })
 })
@@ -205,10 +181,6 @@ describe('numeric and size assertions', () => {
       value: invalidSet,
       violates: assertionSubject('hasSize', 'size.max', [1]),
     })
-    expect(hasSize({ min: 1 })([])).toEqual({
-      value: [],
-      violates: assertionSubject('hasSize', 'size.unsupported-type'),
-    })
   })
 
   test('hasValue', () => {
@@ -222,10 +194,6 @@ describe('numeric and size assertions', () => {
     expect(hasValue({ max: 3 })(4)).toEqual({
       value: 4,
       violates: assertionSubject('hasValue', 'number.max', [3]),
-    })
-    expect(hasValue({ max: 3 })('2')).toEqual({
-      value: '2',
-      violates: assertionSubject('hasValue', 'number.unsupported-type'),
     })
   })
 
@@ -241,10 +209,6 @@ describe('numeric and size assertions', () => {
     expect(multipleOf(0)(10)).toEqual({
       value: 10,
       violates: assertionSubject('multipleOf', 'number.multiple-of', [0]),
-    })
-    expect(multipleOf(5)('10')).toEqual({
-      value: '10',
-      violates: assertionSubject('multipleOf', 'number.unsupported-type'),
     })
   })
 })

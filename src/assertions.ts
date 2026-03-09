@@ -1,6 +1,9 @@
 import type { AssertionConstraint } from '~types'
 
-import { assert } from './assert'
+import {
+  assert,
+  refine,
+} from './assert'
 
 import {
   endsWith as _endsWith,
@@ -34,7 +37,10 @@ import {
   isSymbol as _isSymbol,
 } from '@/predicates'
 
-export { assert }
+export {
+  assert,
+  refine,
+}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 type Defined = {} | null
@@ -204,8 +210,7 @@ export const hasLength = <const O extends BoundedAssertionOptions = EmptyOptions
   const { bail = false } = options
   const constraints = buildLengthConstraints(options)
 
-  return assert(
-    (value: unknown): value is string | unknown[] => isArray(value) || _isString(value),
+  return refine(
     {
       name: 'hasLength',
       bail,
@@ -221,8 +226,7 @@ export const hasSize = <const O extends BoundedAssertionOptions = EmptyOptions>(
   const { bail = false } = options
   const constraints = buildSizeConstraints(options)
 
-  return assert(
-    (value: unknown): value is Map<unknown, unknown> | Set<unknown> => _isMap(value) || _isSet(value),
+  return refine(
     {
       name: 'hasSize',
       bail,
@@ -239,8 +243,7 @@ export const hasPattern = (
   }: {
     bail?: boolean;
   } = {}
-) => assert(
-  _isString,
+) => refine(
   {
     name: 'hasPattern',
     bail,
@@ -261,8 +264,7 @@ export const startsWith = (
   }: {
     bail?: boolean;
   } = {}
-) => assert(
-  _isString,
+) => refine(
   {
     name: 'startsWith',
     bail,
@@ -283,8 +285,7 @@ export const endsWith = (
   }: {
     bail?: boolean;
   } = {}
-) => assert(
-  _isString,
+) => refine(
   {
     name: 'endsWith',
     bail,
@@ -304,8 +305,7 @@ export const hasValue = <const O extends BoundedAssertionOptions = EmptyOptions>
   const { bail = false } = options
   const constraints = buildValueConstraints(options)
 
-  return assert(
-    _isNumber,
+  return refine(
     {
       name: 'hasValue',
       bail,
@@ -322,8 +322,7 @@ export const multipleOf = <const Step extends number>(
   }: {
     bail?: boolean;
   } = {}
-) => assert(
-  _isNumber,
+) => refine(
   {
     name: 'multipleOf',
     bail,

@@ -64,15 +64,16 @@ const lengthDescriptor = describe(hasLength({ min: 3 }))
 import {
   collection,
   hasLength,
+  isString,
   validate,
 } from '@modulify/validator'
 
-const [ok, , violations] = validate.sync('ab', hasLength({ min: 3 }))
+const [ok, , violations] = validate.sync('ab', [isString, hasLength({ min: 3 })])
 
 if (!ok) {
   collection(violations).map(violation => {
     switch (violation.violates.code) {
-      case 'length.unsupported-type':
+      case 'type.string':
         return violation.violates.name
       case 'length.min':
         return violation.violates.args[0]
@@ -81,7 +82,7 @@ if (!ok) {
 }
 ```
 
-Для вызовов вроде `hasLength({ min: 3 })` невозможные ветки, например `'length.max'` или `'length.range'`, больше не попадают в union violations.
+Для staged-вызовов вроде `[isString, hasLength({ min: 3 })]` невозможные ветки, например `'length.max'` или `'length.range'`, больше не попадают в union violations, а unsupported-type остаётся только на стороне descriptor-а и не протекает в staged-валидацию.
 
 ## Зачем нужен глобальный реестр
 

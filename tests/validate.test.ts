@@ -204,6 +204,27 @@ describe('validate', () => {
     }]))
   })
 
+  test('throws for dynamic refinement sequences without a preceding guard', () => {
+    const staged = [hasLength({ min: 2 })] as Assertion[]
+
+    expect(() => validate.sync('abc', staged)).toThrow('Refinement hasLength requires a compatible preceding guard')
+  })
+
+  test('evaluates refinements in sync validation after a compatible guard', () => {
+    expect(validate.sync('neo', [isString, hasLength({ min: 2 })])).toEqual(valid('neo'))
+    expect(validate.sync('n', [isString, hasLength({ min: 2 })])).toEqual(invalid('n', [{
+      value: 'n',
+      path: [],
+      violates: assertionSubject('hasLength', 'length.min', [2]),
+    }]))
+  })
+
+  test('rejects async validation for dynamic refinement sequences without a preceding guard', async () => {
+    const staged = [hasLength({ min: 2 })] as Assertion[]
+
+    await expect(validate('abc', staged)).rejects.toThrow('Refinement hasLength requires a compatible preceding guard')
+  })
+
   test('awaits async assertions with bail and stops further checks on failure', async () => {
     expect(await validate('', [
       createAsyncAssertion('asyncBail', async (value: unknown) => ({
@@ -224,6 +245,7 @@ describe('validate', () => {
         value,
         violates: assertionSubject('asyncNoBail', 'asyncNoBail'),
       })),
+      isString,
       hasLength({ min: 2 }),
     ])).toEqual(invalid('', [{
       value: '',
@@ -239,6 +261,7 @@ describe('validate', () => {
   test('continues after async bail assertions that succeed', async () => {
     expect(await validate('', [
       createAsyncAssertion('asyncBailPass', async () => null, true),
+      isString,
       hasLength({ min: 2 }),
     ])).toEqual(invalid('', [{
       value: '',
@@ -250,6 +273,7 @@ describe('validate', () => {
   test('ignores async assertions without bail when they return null', async () => {
     expect(await validate('', [
       createAsyncAssertion('asyncNoBailPass', async () => null),
+      isString,
       hasLength({ min: 2 }),
     ])).toEqual(invalid('', [{
       value: '',

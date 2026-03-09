@@ -1,4 +1,6 @@
 import type {
+  Assertion,
+  CompatibleConstraints,
   Constraint,
   InferConstraints,
   InferViolations,
@@ -22,9 +24,13 @@ export {
 export type {
   AllOfConstraintDescriptor,
   AssertionDescriptor,
+  AssertionStage,
   AssertionConstraintDescriptor,
   AsyncObjectShapeRuleDescriptor,
   BaseConstraintDescriptor,
+  CompatibleConstraints,
+  CompatibleConstraintTuple,
+  CompatibleShapeDescriptor,
   Constraint,
   ConstraintDescriptor,
   ConstraintMetadata,
@@ -39,6 +45,7 @@ export type {
   DiscriminatedUnionValidator,
   EachValidator,
   FieldsMatchObjectShapeRuleDescriptor,
+  Guard,
   InferShape,
   InferConstraint,
   InferConstraints,
@@ -57,6 +64,7 @@ export type {
   ObjectShapeRuleDescriptorBase,
   OptionalValidator,
   RecordValidator,
+  Refinement,
   RecordConstraintDescriptor,
   ShapeDescriptor,
   ShapeFieldSelector,
@@ -90,25 +98,39 @@ export type {
 } from '~types'
 
 import {
+  isRefinementAssertion,
+  runRefinementAssertion,
+} from '@/assert'
+import {
   arrayify,
   isValidator,
 } from '@/constraints'
 
 const collectViolations = async (
   value: unknown,
-  constraints: MaybeMany<Constraint>,
+  constraints: CompatibleConstraints<MaybeMany<Constraint>>,
   path: PropertyKey[] = []
 ): Promise<Violation[]> => {
   const validations: Promise<Violation[]>[] = []
+  let establishedAssertionDomain = false
 
   for (const c of arrayify(constraints)) {
     if (isValidator(c)) {
+      establishedAssertionDomain = false
       validations.push(...c.run(collectViolations, value, path).map(v => v instanceof Promise ? v : Promise.resolve(v)))
       continue
     }
 
-    const v = c(value)
+    if (!establishedAssertionDomain && isRefinementAssertion(c)) {
+      throw new Error(`Refinement ${String(c.name)} requires a compatible preceding guard`)
+    }
+
+    const v = establishedAssertionDomain && isRefinementAssertion(c)
+      ? runRefinementAssertion(c as Assertion, value)
+      : c(value)
+
     if (v instanceof Promise) {
+      establishedAssertionDomain = false
       if (c.bail) {
         const awaited = await v
         if (awaited) {
@@ -119,11 +141,14 @@ const collectViolations = async (
         validations.push(v.then(v => v ? [Object.assign(v, { path: [...path] })] : []))
       }
     } else if (v) {
+      establishedAssertionDomain = false
       validations.push(Promise.resolve([Object.assign(v, { path: [...path] })]))
 
       if (c.bail) {
         break
       }
+    } else {
+      establishedAssertionDomain = true
     }
   }
 
@@ -134,24 +159,36 @@ collectViolations.sync = false as const
 
 const collectViolationsSync = (
   value: unknown,
-  constraints: MaybeMany<Constraint>,
+  constraints: CompatibleConstraints<MaybeMany<Constraint>>,
   path: PropertyKey[] = []
 ): Violation[] => {
   const violations: Recursive<Violation>[] = []
+  let establishedAssertionDomain = false
 
   for (const c of arrayify(constraints)) {
     if (isValidator(c)) {
+      establishedAssertionDomain = false
       violations.push(...c.run(collectViolationsSync, value, path))
       continue
     }
 
-    const v = c(value)
+    if (!establishedAssertionDomain && isRefinementAssertion(c)) {
+      throw new Error(`Refinement ${String(c.name)} requires a compatible preceding guard`)
+    }
+
+    const v = establishedAssertionDomain && isRefinementAssertion(c)
+      ? runRefinementAssertion(c as Assertion, value)
+      : c(value)
+
     if (v instanceof Promise) {
       throw new Error('Found asynchronous validator ' + String(c.name))
     } else if (v) {
+      establishedAssertionDomain = false
       violations.push(Object.assign(v, { path: [...path] }))
 
       if (c.bail) break
+    } else {
+      establishedAssertionDomain = true
     }
   }
 
@@ -200,17 +237,17 @@ async function settle (value: unknown, path: PropertyKey[], validations: Promise
 }
 
 export const matches = {
-  sync<const C extends MaybeMany<Constraint>>(value: unknown, constraints: C): value is InferConstraints<C> {
-    return collectViolationsSync(value, constraints).length === 0
+  sync<const C extends MaybeMany<Constraint>>(value: unknown, constraints: CompatibleConstraints<C>): value is InferConstraints<C> {
+    return collectViolationsSync(value, constraints as CompatibleConstraints<MaybeMany<Constraint>>).length === 0
   },
 }
 
 export const validate = Object.assign(
   async <const C extends MaybeMany<Constraint>>(
     value: unknown,
-    constraints: C
+    constraints: CompatibleConstraints<C>
   ): Promise<ValidationResult<InferConstraints<C>, InferViolations<C>>> => {
-    const violations = await collectViolations(value, constraints)
+    const violations = await collectViolations(value, constraints as CompatibleConstraints<MaybeMany<Constraint>>)
 
     return toResult<InferConstraints<C>, InferViolations<C>>(
       value,
@@ -220,9 +257,9 @@ export const validate = Object.assign(
   {
     sync<const C extends MaybeMany<Constraint>>(
       value: unknown,
-      constraints: C
+      constraints: CompatibleConstraints<C>
     ): ValidationResult<InferConstraints<C>, InferViolations<C>> {
-      const violations = collectViolationsSync(value, constraints)
+      const violations = collectViolationsSync(value, constraints as CompatibleConstraints<MaybeMany<Constraint>>)
 
       return toResult<InferConstraints<C>, InferViolations<C>>(
         value,

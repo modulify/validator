@@ -14,7 +14,7 @@ It is intentionally recipe-oriented. Use it when you already understand the proj
 Use this quick rule of thumb:
 
 - use `@modulify/validator/predicates` when you only need runtime checks and type guards;
-- use built-in assertions such as `isString`, `isDefined`, `hasLength(...)`, `oneOf(...)` when you want machine-readable failures;
+- use built-in guard/refinement assertions such as `isString`, `isDefined`, `hasLength(...)`, `oneOf(...)` when you want machine-readable failures;
 - use combinators such as `shape(...)`, `each(...)`, `tuple(...)`, `record(...)`, `union(...)`, `discriminatedUnion(...)` when validation becomes structural;
 - use `meta(...)` and `describe(...)` when another layer needs stable machine-readable descriptors;
 - use `toJsonSchema(...)` only when you need an interoperability/export view, not as the source of runtime truth.
@@ -44,6 +44,7 @@ Practical pattern:
 
 - use `.strict()` for request payloads when unknown keys should be rejected;
 - keep leaf checks small and composable;
+- when you use an assertion array, start with a compatible guard such as `isString` before string refinements like `hasLength(...)`;
 - use the `validated` tuple item inside the success branch;
 - use `violations` as structured data for API responses, logs, or UI mapping.
 

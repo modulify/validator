@@ -3,7 +3,7 @@ import type {
   AssertionDescriptor,
   ConstraintDescriptor,
   FieldsMatchObjectShapeRuleDescriptor,
-  ValidationTuple,
+  ValidationResult,
   ViolationCode,
 } from '@/index'
 
@@ -36,7 +36,7 @@ describe('metadata and introspection types', () => {
       role: 'admin',
     }, schema)
 
-    assertType<ValidationTuple<{
+    assertType<ValidationResult<{
       nickname: string | undefined;
       role: 'admin';
     }>>(result)

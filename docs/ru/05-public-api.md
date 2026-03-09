@@ -67,7 +67,7 @@ Root package также содержит:
 `validate(...)` и `validate.sync(...)` возвращают:
 
 ```typescript
-type ValidationTuple<T> =
+type ValidationResult<T> =
   | [ok: true, validated: T, violations: []]
   | [ok: false, validated: unknown, violations: Violation[]]
 ```

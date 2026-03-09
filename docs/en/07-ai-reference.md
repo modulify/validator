@@ -43,7 +43,7 @@ Use `@modulify/validator/json-schema` for:
 ## Validation Result Contract
 
 ```typescript
-type ValidationTuple<T> =
+type ValidationResult<T> =
   | [ok: true, validated: T, violations: []]
   | [ok: false, validated: unknown, violations: Violation[]]
 ```

@@ -4,7 +4,7 @@ import type {
   ConstraintDescriptor,
   ConstraintMetadata,
   DescribeConstraint,
-  DescribeMaybeMany,
+  DescribeConstraints,
   MaybeMany,
   Validator,
 } from '~types'
@@ -152,15 +152,15 @@ export const meta = <const C extends Constraint, const M extends ConstraintMetad
 
 export const custom = <const V extends Validator>(validator: V): V => validator
 
-export const describeConstraints = <const C extends MaybeMany<Constraint>>(constraints: C): DescribeMaybeMany<C> => {
+export const describeConstraints = <const C extends MaybeMany<Constraint>>(constraints: C): DescribeConstraints<C> => {
   const values = arrayify(constraints)
 
   return values.length === 1
-    ? describe(values[0] as Constraint) as DescribeMaybeMany<C>
+    ? describe(values[0] as Constraint) as DescribeConstraints<C>
     : {
       kind: 'allOf',
       constraints: values.map(value => describe(value)),
-    } as unknown as DescribeMaybeMany<C>
+    } as unknown as DescribeConstraints<C>
 }
 
 export const describe = <const C extends Constraint>(constraint: C): DescribeConstraint<C> => {

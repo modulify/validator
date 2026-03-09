@@ -120,7 +120,7 @@ This is one of the reasons the library can stay adapter-friendly without stringi
 `validate(...)` and `validate.sync(...)` return:
 
 ```typescript
-type ValidationTuple<T> =
+type ValidationResult<T> =
   | [ok: true, validated: T, violations: []]
   | [ok: false, validated: unknown, violations: Violation[]]
 ```

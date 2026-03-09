@@ -1,10 +1,9 @@
 import type {
   AsyncObjectShapeRuleDescriptor,
-  ObjectShapeAsyncRefinement,
-  ObjectShapeRefinement,
-  ObjectShapeRefinementSync,
-  ObjectShapeSyncRefinement,
-  ValidationTuple,
+  ShapeRefinement,
+  ShapeRefinementViolationInput,
+  SyncShapeRefinement,
+  ValidationResult,
   Violation,
 } from '@/index'
 
@@ -37,7 +36,7 @@ describe('combinator types', () => {
   test('exact preserves literal types', () => {
     const result = validate.sync('admin', exact('admin'))
 
-    assertType<ValidationTuple<'admin'>>(result)
+    assertType<ValidationResult<'admin'>>(result)
   })
 
   test('optional, nullable and nullish affect inferred object types', () => {
@@ -55,7 +54,7 @@ describe('combinator types', () => {
       role: 'admin',
     }, schema)
 
-    assertType<ValidationTuple<{
+    assertType<ValidationResult<{
       nickname: string | undefined;
       middleName: string | null;
       bio: string | null | undefined;
@@ -92,7 +91,7 @@ describe('combinator types', () => {
   test('tuple preserves positional inference', () => {
     const result = validate.sync(['admin', undefined], tuple([exact('admin'), optional(isString)]))
 
-    assertType<ValidationTuple<['admin', string | undefined]>>(result)
+    assertType<ValidationResult<['admin', string | undefined]>>(result)
   })
 
   test('record wraps value inference for dynamic keys', () => {
@@ -101,13 +100,13 @@ describe('combinator types', () => {
       backup: 'admin',
     }, record(exact('admin')))
 
-    assertType<ValidationTuple<Record<string, 'admin'>>>(result)
+    assertType<ValidationResult<Record<string, 'admin'>>>(result)
   })
 
   test('union combines branch inference into a union type', () => {
     const result = validate.sync('admin', union([exact('admin'), isNumber]))
 
-    assertType<ValidationTuple<'admin' | number>>(result)
+    assertType<ValidationResult<'admin' | number>>(result)
   })
 
   test('union preserves object variant inference', () => {
@@ -125,7 +124,7 @@ describe('combinator types', () => {
       }),
     ]))
 
-    assertType<ValidationTuple<
+    assertType<ValidationResult<
       | { kind: 'user'; name: string }
       | { kind: 'team'; size: string | undefined }
     >>(result)
@@ -146,7 +145,7 @@ describe('combinator types', () => {
       }),
     }))
 
-    assertType<ValidationTuple<
+    assertType<ValidationResult<
       | { kind: 'user'; name: string }
       | { kind: 'team'; size: string | undefined }
     >>(result)
@@ -165,7 +164,7 @@ describe('combinator types', () => {
     const extended = profile.extend({ team: isString })
     const merged = profile.merge(shape({ role: exact('editor'), team: isString }))
 
-    assertType<ValidationTuple<{
+    assertType<ValidationResult<{
       id: string;
       nickname: string | undefined;
     }>>(validate.sync({
@@ -173,7 +172,7 @@ describe('combinator types', () => {
       nickname: undefined,
     }, picked))
 
-    assertType<ValidationTuple<{
+    assertType<ValidationResult<{
       id: string;
       role: 'admin';
     }>>(validate.sync({
@@ -181,13 +180,13 @@ describe('combinator types', () => {
       role: 'admin',
     }, omitted))
 
-    assertType<ValidationTuple<{
+    assertType<ValidationResult<{
       id: string | undefined;
       nickname: string | undefined;
       role: 'admin' | undefined;
     }>>(validate.sync({}, partialProfile))
 
-    assertType<ValidationTuple<{
+    assertType<ValidationResult<{
       id: string;
       nickname: string | undefined;
       role: 'admin';
@@ -199,7 +198,7 @@ describe('combinator types', () => {
       team: 'validators',
     }, extended))
 
-    assertType<ValidationTuple<{
+    assertType<ValidationResult<{
       id: string;
       nickname: string | undefined;
       role: 'editor';
@@ -238,7 +237,7 @@ describe('combinator types', () => {
 
     const confirmedRegistration = registration.fieldsMatch(['password', 'confirmPassword'])
 
-    assertType<Promise<ValidationTuple<{
+    assertType<Promise<ValidationResult<{
       password: string;
       confirmPassword: string;
     }>>>(validate({
@@ -246,7 +245,7 @@ describe('combinator types', () => {
       confirmPassword: 'secret',
     }, registration))
 
-    assertType<Promise<ValidationTuple<{
+    assertType<Promise<ValidationResult<{
       password: string;
       confirmPassword: string;
     }>>>(validate({
@@ -254,7 +253,7 @@ describe('combinator types', () => {
       confirmPassword: 'secret',
     }, confirmedRegistration))
 
-    assertType<ValidationTuple<{
+    assertType<ValidationResult<{
       password: string;
       confirmPassword: string;
     }>>(validate.sync({
@@ -278,29 +277,22 @@ describe('combinator types', () => {
     }
   })
 
-  test('object-level refinement type aliases expose async-first and sync-safe names', () => {
-    assertType<ObjectShapeRefinement<{ password: string }>>(async value => {
+  test('object-level refinement types expose async-first and sync-safe names', () => {
+    assertType<ShapeRefinement<{ password: string }>>(async value => {
       assertType<string>(value.password)
 
       return []
     })
 
-    assertType<ObjectShapeRefinementSync<{ password: string }>>(value => {
+    assertType<SyncShapeRefinement<{ password: string }>>(value => {
       assertType<string>(value.password)
 
       return []
     })
 
-    assertType<ObjectShapeAsyncRefinement<{ password: string }>>(async value => {
-      assertType<string>(value.password)
-
-      return []
-    })
-
-    assertType<ObjectShapeSyncRefinement<{ password: string }>>(value => {
-      assertType<string>(value.password)
-
-      return []
+    assertType<ShapeRefinementViolationInput<'shape.fields.mismatch'>>({
+      code: 'shape.fields.mismatch',
+      args: [[['password'], ['confirmPassword']]],
     })
   })
 
@@ -312,7 +304,7 @@ describe('combinator types', () => {
       }),
     }).fieldsMatch([['password'], ['confirm', 'password']])
 
-    assertType<ValidationTuple<{
+    assertType<ValidationResult<{
       password: string;
       confirm: {
         password: string;
@@ -333,7 +325,7 @@ describe('combinator types', () => {
       }),
     }).fieldsMatch(['password', ['confirm', 'password']])
 
-    assertType<ValidationTuple<{
+    assertType<ValidationResult<{
       password: string;
       confirm: {
         password: string;

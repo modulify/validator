@@ -1,5 +1,5 @@
 import type {
-  ValidationTuple,
+  ValidationResult,
   Violation,
 } from '@/index'
 
@@ -31,7 +31,7 @@ describe('validate tuple types', () => {
       tags: ['ts'],
     }, profile)
 
-    assertType<ValidationTuple<{
+    assertType<ValidationResult<{
       name: string;
       tags: string[];
     }>>(result)

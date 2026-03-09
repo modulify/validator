@@ -72,6 +72,8 @@ const isJsonScalar = (value: unknown): value is string | number | boolean | null
 }
 
 const isLength = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+const isFiniteNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
+const isPositiveFiniteNumber = (value: unknown): value is number => isFiniteNumber(value) && value > 0
 
 const withPath = (context: ExportContext, segment: PropertyKey): ExportContext => ({
   ...context,
@@ -81,6 +83,8 @@ const withPath = (context: ExportContext, segment: PropertyKey): ExportContext =
 const formatPath = (path: readonly PropertyKey[]) => path.length === 0
   ? '<root>'
   : path.map(segment => typeof segment === 'symbol' ? segment.toString() : String(segment)).join('.')
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 const setSchemaProperty = <K extends keyof JsonSchema>(
   schema: MutableJsonSchema,
@@ -315,6 +319,125 @@ const enumSchema = (
   return { enum: [...new Set(values)] }
 }
 
+const stringSchema = (
+  descriptor: AssertionDescriptor,
+  context: ExportContext
+): JsonSchema => {
+  if (descriptor.name === 'hasPattern') {
+    const [pattern] = descriptor.constraints[0]?.args ?? []
+
+    if (!(pattern instanceof RegExp)) {
+      return unsupported(descriptor, context, 'hasPattern(...) requires a RegExp pattern')
+    }
+
+    if (pattern.flags !== '') {
+      return unsupported(descriptor, context, 'hasPattern(...) supports only flagless regular expressions in JSON Schema')
+    }
+
+    return {
+      type: 'string',
+      pattern: pattern.source,
+    }
+  }
+
+  if (descriptor.name === 'startsWith') {
+    const [prefix] = descriptor.constraints[0]?.args ?? []
+
+    if (typeof prefix !== 'string') {
+      return unsupported(descriptor, context, 'startsWith(...) requires a string prefix')
+    }
+
+    return {
+      type: 'string',
+      pattern: `^${escapeRegExp(prefix)}`,
+    }
+  }
+
+  const [suffix] = descriptor.constraints[0]?.args ?? []
+
+  if (typeof suffix !== 'string') {
+    return unsupported(descriptor, context, 'endsWith(...) requires a string suffix')
+  }
+
+  return {
+    type: 'string',
+    pattern: `${escapeRegExp(suffix)}$`,
+  }
+}
+
+const numberSchema = (
+  descriptor: AssertionDescriptor,
+  context: ExportContext
+): JsonSchema => {
+  const schema: MutableJsonSchema = { type: 'number' }
+
+  if (descriptor.name === 'multipleOf') {
+    const [step] = descriptor.constraints[0]?.args ?? []
+
+    if (!isPositiveFiniteNumber(step)) {
+      return unsupported(descriptor, context, 'multipleOf(...) requires a positive finite divisor')
+    }
+
+    setSchemaProperty(schema, 'multipleOf', step)
+
+    return schema
+  }
+
+  for (const constraint of descriptor.constraints) {
+    switch (constraint.code) {
+      case 'number.exact': {
+        const exact = constraint.args[0]
+
+        if (!isFiniteNumber(exact)) {
+          return unsupported(descriptor, context, 'hasValue exact bounds must be finite numbers')
+        }
+
+        setSchemaProperty(schema, 'const', exact)
+        break
+      }
+
+      case 'number.min': {
+        const min = constraint.args[0]
+
+        if (!isFiniteNumber(min)) {
+          return unsupported(descriptor, context, 'hasValue minimum bounds must be finite numbers')
+        }
+
+        setSchemaProperty(schema, 'minimum', min)
+        break
+      }
+
+      case 'number.max': {
+        const max = constraint.args[0]
+
+        if (!isFiniteNumber(max)) {
+          return unsupported(descriptor, context, 'hasValue maximum bounds must be finite numbers')
+        }
+
+        setSchemaProperty(schema, 'maximum', max)
+        break
+      }
+
+      case 'number.range': {
+        const range = constraint.args[0]
+
+        if (!Array.isArray(range) || range.length !== 2 || !isFiniteNumber(range[0]) || !isFiniteNumber(range[1])) {
+          return unsupported(descriptor, context, 'hasValue ranges must be `[min, max]` finite number tuples')
+        }
+
+        setSchemaProperty(schema, 'minimum', range[0])
+        setSchemaProperty(schema, 'maximum', range[1])
+        break
+      }
+
+      default:
+        return unsupported(descriptor, context, `unsupported number assertion "${descriptor.name}"`)
+    }
+  }
+
+  return schema
+}
+
 const assertionAcceptsUndefined = (descriptor: AssertionDescriptor) => {
   switch (descriptor.name) {
     case 'exact':
@@ -409,6 +532,11 @@ const exportAssertion = (
         format: 'email',
       }
 
+    case 'hasPattern':
+    case 'startsWith':
+    case 'endsWith':
+      return stringSchema(descriptor, context)
+
     case 'isFile':
       return unsupported(descriptor, context, 'File instances do not have a stable JSON Schema representation')
 
@@ -424,8 +552,15 @@ const exportAssertion = (
     case 'isNaN':
       return unsupported(descriptor, context, 'NaN cannot be represented in JSON Schema')
 
+    case 'hasValue':
+    case 'multipleOf':
+      return numberSchema(descriptor, context)
+
     case 'exact':
       return exactSchema(descriptor, context)
+
+    case 'hasSize':
+      return unsupported(descriptor, context, 'Map and Set sizes do not have a stable JSON Schema representation')
 
     case 'oneOf':
       return enumSchema(descriptor, context)

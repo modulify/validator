@@ -6,6 +6,9 @@ import {
 
 import {
   hasLength,
+  hasPattern,
+  hasSize,
+  hasValue,
   isBigInt,
   isBlob,
   isFile,
@@ -13,7 +16,10 @@ import {
   isMap,
   isNaN,
   isSet,
+  multipleOf,
   oneOf,
+  endsWith,
+  startsWith,
 } from '@/assertions'
 
 const assertionSubject = (name: string, code: string, args: unknown[] = []) => ({ kind: 'assertion', name, code, args })
@@ -141,6 +147,105 @@ describe('oneOf', () => {
     { accept: [1, 2, 3, '4'], value: 4 },
   ])('invalid#%#', ({ accept, value }) => {
     expect(oneOf(accept).check(value)).toBe(false)
+  })
+})
+
+describe('string assertions', () => {
+  test('hasPattern', () => {
+    expect(hasPattern(/^[a-z]+$/).check('nick')).toBe(true)
+    expect(hasPattern(/^[a-z]+$/)('nick')).toBe(null)
+    expect(hasPattern(/^[a-z]+$/)('Nick')).toEqual({
+      value: 'Nick',
+      violates: assertionSubject('hasPattern', 'string.pattern', [/^[a-z]+$/]),
+    })
+    expect(hasPattern(/^[a-z]+$/)(1)).toEqual({
+      value: 1,
+      violates: assertionSubject('hasPattern', 'string.unsupported-type'),
+    })
+  })
+
+  test('startsWith', () => {
+    expect(startsWith('pre').check('prefix')).toBe(true)
+    expect(startsWith('pre')('prefix')).toBe(null)
+    expect(startsWith('pre')('suffix')).toEqual({
+      value: 'suffix',
+      violates: assertionSubject('startsWith', 'string.starts-with', ['pre']),
+    })
+    expect(startsWith('pre')(false)).toEqual({
+      value: false,
+      violates: assertionSubject('startsWith', 'string.unsupported-type'),
+    })
+  })
+
+  test('endsWith', () => {
+    expect(endsWith('.ts').check('index.ts')).toBe(true)
+    expect(endsWith('.ts')('index.ts')).toBe(null)
+    expect(endsWith('.ts')('index.js')).toEqual({
+      value: 'index.js',
+      violates: assertionSubject('endsWith', 'string.ends-with', ['.ts']),
+    })
+    expect(endsWith('.ts')(null)).toEqual({
+      value: null,
+      violates: assertionSubject('endsWith', 'string.unsupported-type'),
+    })
+  })
+})
+
+describe('numeric and size assertions', () => {
+  test('hasSize', () => {
+    const validSet = new Set([1, 2, 3])
+    const validMap = new Map([['key', 1]])
+    const invalidSet = new Set([1, 2])
+    const rangeSet = new Set([1, 2, 3, 4])
+
+    expect(hasSize({ min: 2 }).check(validSet)).toBe(true)
+    expect(hasSize({ exact: 1 })(validMap)).toBe(null)
+    expect(hasSize({ range: [3, 5] }).check(rangeSet)).toBe(true)
+    expect(hasSize({ max: 1 })(invalidSet)).toEqual({
+      value: invalidSet,
+      violates: assertionSubject('hasSize', 'size.max', [1]),
+    })
+    expect(hasSize({ min: 1 })([])).toEqual({
+      value: [],
+      violates: assertionSubject('hasSize', 'size.unsupported-type'),
+    })
+  })
+
+  test('hasValue', () => {
+    expect(hasValue({ range: [1, 3] }).check(2)).toBe(true)
+    expect(hasValue({ exact: 3 })(3)).toBe(null)
+    expect(hasValue({ max: 3 }).check(2)).toBe(true)
+    expect(hasValue({ min: 3 })(2)).toEqual({
+      value: 2,
+      violates: assertionSubject('hasValue', 'number.min', [3]),
+    })
+    expect(hasValue({ max: 3 })(4)).toEqual({
+      value: 4,
+      violates: assertionSubject('hasValue', 'number.max', [3]),
+    })
+    expect(hasValue({ max: 3 })('2')).toEqual({
+      value: '2',
+      violates: assertionSubject('hasValue', 'number.unsupported-type'),
+    })
+  })
+
+  test('multipleOf', () => {
+    expect(multipleOf(5).check(10)).toBe(true)
+    expect(multipleOf(0.1).check(0.3)).toBe(true)
+    expect(multipleOf(0).check(10)).toBe(false)
+    expect(multipleOf(5)(10)).toBe(null)
+    expect(multipleOf(5)(12)).toEqual({
+      value: 12,
+      violates: assertionSubject('multipleOf', 'number.multiple-of', [5]),
+    })
+    expect(multipleOf(0)(10)).toEqual({
+      value: 10,
+      violates: assertionSubject('multipleOf', 'number.multiple-of', [0]),
+    })
+    expect(multipleOf(5)('10')).toEqual({
+      value: '10',
+      violates: assertionSubject('multipleOf', 'number.unsupported-type'),
+    })
   })
 })
 

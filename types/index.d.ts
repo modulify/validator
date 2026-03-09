@@ -22,7 +22,7 @@ export type MaybePromise<V> = V | Promise<V>
 export type Predicate<T = unknown> = (value: unknown) => value is T
 
 /** Checker used by assertion constraints after a value is extracted. */
-export type Checker<T, A extends unknown[] = unknown[]> = (value: T, ...args: A) => boolean
+export type Checker<T, A extends readonly unknown[] = readonly unknown[]> = (value: T, ...args: A) => boolean
 
 /** Extracts a derived value from the original input before a checker runs. */
 export type Extractor<T, V> = (value: T) => V
@@ -30,16 +30,159 @@ export type Extractor<T, V> = (value: T) => V
 /** Origin layer that produced a violation. */
 export type ViolationKind = 'assertion' | 'validator' | 'runtime'
 
-/** Machine-readable description of a validation failure. */
-export type ViolationSubject<
-  T extends unknown[] = unknown[],
-  K extends ViolationKind = ViolationKind
+/** Contract stored in `ViolationCodeRegistry` for a known machine-readable code. */
+export type ViolationCodeEntry<
+  K extends ViolationKind = ViolationKind,
+  N extends string = string,
+  A extends readonly unknown[] = readonly unknown[],
 > = {
   kind: K;
-  name: string;
-  code: string;
-  args: T;
+  name: N;
+  args: A;
 }
+
+type ResolveViolationEntry<E> =
+  [E] extends [never]
+    ? ViolationCodeEntry
+    : E extends ViolationCodeEntry
+      ? E
+      : ViolationCodeEntry
+
+type ResolveViolationSubjectCode<COrT extends string | readonly unknown[]> = COrT extends string ? COrT : string
+type ResolveViolationSubjectArgs<COrT extends string | readonly unknown[], C extends string> = [COrT] extends [readonly unknown[]]
+  ? COrT
+  : ViolationArgs<C>
+
+/**
+ * Extensible registry of machine-readable violation codes.
+ *
+ * Consumers can augment this interface in their app code:
+ * `declare module '@modulify/validator' { interface ViolationCodeRegistry { 'app.user.conflict': ViolationCodeEntry<'validator', 'user', readonly []> } }`
+ *
+ * Legacy `never` markers remain supported as a fallback for gradual migration:
+ * `declare module '@modulify/validator' { interface ViolationCodeRegistry { 'legacy.code': never } }`
+ */
+export interface ViolationCodeRegistry {
+  'length.exact': ViolationCodeEntry<'assertion', 'hasLength', readonly [exact: number]>;
+  'length.max': ViolationCodeEntry<'assertion', 'hasLength', readonly [max: number]>;
+  'length.min': ViolationCodeEntry<'assertion', 'hasLength', readonly [min: number]>;
+  'length.range': ViolationCodeEntry<'assertion', 'hasLength', readonly [range: readonly [number, number]]>;
+  'length.unsupported-type': ViolationCodeEntry<'assertion', 'hasLength', readonly []>;
+  'number.exact': ViolationCodeEntry<'assertion', 'hasValue', readonly [exact: number]>;
+  'number.max': ViolationCodeEntry<'assertion', 'hasValue', readonly [max: number]>;
+  'number.min': ViolationCodeEntry<'assertion', 'hasValue', readonly [min: number]>;
+  'number.multiple-of': ViolationCodeEntry<'assertion', 'multipleOf', readonly [step: number]>;
+  'number.nan': ViolationCodeEntry<'assertion', 'isNaN', readonly []>;
+  'number.range': ViolationCodeEntry<'assertion', 'hasValue', readonly [range: readonly [number, number]]>;
+  'number.unsupported-type': ViolationCodeEntry<'assertion', 'hasValue' | 'multipleOf', readonly []>;
+  'runtime.rejection': ViolationCodeEntry<'runtime', 'validate', readonly [reason: unknown]>;
+  'shape.fields.mismatch': ViolationCodeEntry<
+    'validator',
+    'shape',
+    readonly [selectors: readonly [ObjectShapeFieldSelector, ObjectShapeFieldSelector]]
+  >;
+  'shape.unknown-key': ViolationCodeEntry<'validator', 'shape', readonly []>;
+  'size.exact': ViolationCodeEntry<'assertion', 'hasSize', readonly [exact: number]>;
+  'size.max': ViolationCodeEntry<'assertion', 'hasSize', readonly [max: number]>;
+  'size.min': ViolationCodeEntry<'assertion', 'hasSize', readonly [min: number]>;
+  'size.range': ViolationCodeEntry<'assertion', 'hasSize', readonly [range: readonly [number, number]]>;
+  'size.unsupported-type': ViolationCodeEntry<'assertion', 'hasSize', readonly []>;
+  'string.email': ViolationCodeEntry<'assertion', 'isEmail', readonly []>;
+  'string.ends-with': ViolationCodeEntry<'assertion', 'endsWith', readonly [suffix: string]>;
+  'string.pattern': ViolationCodeEntry<'assertion', 'hasPattern', readonly [pattern: RegExp]>;
+  'string.starts-with': ViolationCodeEntry<'assertion', 'startsWith', readonly [prefix: string]>;
+  'string.unsupported-type': ViolationCodeEntry<
+    'assertion',
+    'hasPattern' | 'startsWith' | 'endsWith',
+    readonly []
+  >;
+  'tuple.length': ViolationCodeEntry<'validator', 'tuple', readonly [length: number]>;
+  'type.array': ViolationCodeEntry<'validator', 'each' | 'tuple', readonly []>;
+  'type.bigint': ViolationCodeEntry<'assertion', 'isBigInt', readonly []>;
+  'type.blob': ViolationCodeEntry<'assertion', 'isBlob', readonly []>;
+  'type.boolean': ViolationCodeEntry<'assertion', 'isBoolean', readonly []>;
+  'type.date': ViolationCodeEntry<'assertion', 'isDate', readonly []>;
+  'type.file': ViolationCodeEntry<'assertion', 'isFile', readonly []>;
+  'type.function': ViolationCodeEntry<'assertion', 'isFunction', readonly []>;
+  'type.map': ViolationCodeEntry<'assertion', 'isMap', readonly []>;
+  'type.null': ViolationCodeEntry<'assertion', 'isNull', readonly []>;
+  'type.number': ViolationCodeEntry<'assertion', 'isNumber', readonly []>;
+  'type.record': ViolationCodeEntry<'validator', 'shape' | 'discriminatedUnion' | 'record', readonly []>;
+  'type.set': ViolationCodeEntry<'assertion', 'isSet', readonly []>;
+  'type.string': ViolationCodeEntry<'assertion', 'isString', readonly []>;
+  'type.symbol': ViolationCodeEntry<'assertion', 'isSymbol', readonly []>;
+  'union.invalid-discriminator': ViolationCodeEntry<
+    'validator',
+    'discriminatedUnion',
+    readonly [variants: readonly PropertyKey[]]
+  >;
+  'union.no-match': ViolationCodeEntry<'validator', 'union', readonly [branches: number]>;
+  'value.defined': ViolationCodeEntry<'assertion', 'isDefined', readonly []>;
+  'value.exact': ViolationCodeEntry<'assertion', 'exact', readonly [expected: unknown]>;
+  'value.one-of': ViolationCodeEntry<'assertion', 'oneOf', readonly [values: readonly unknown[]]>;
+}
+
+/** Union of all registered machine-readable violation codes. */
+export type ViolationCode = Extract<keyof ViolationCodeRegistry, string>
+
+/** Registered codes that provide a full contract entry instead of a legacy `never` marker. */
+export type KnownViolationCode = Extract<{
+  [C in ViolationCode]:
+    [ViolationCodeRegistry[C]] extends [never]
+      ? never
+      : ViolationCodeRegistry[C] extends ViolationCodeEntry
+        ? C
+        : never
+}[ViolationCode], string>
+
+/** Contract entry derived from `ViolationCodeRegistry`, with a generic fallback for unknown or legacy codes. */
+export type ViolationEntry<C extends string = string> = C extends ViolationCode
+  ? ResolveViolationEntry<ViolationCodeRegistry[C]>
+  : ViolationCodeEntry
+
+/** Tuple of machine-readable arguments associated with a violation code. */
+export type ViolationArgs<C extends string = string> = ViolationEntry<C>['args']
+
+/** Origin layer associated with a violation code. */
+export type ViolationKindOf<C extends string = string> = ViolationEntry<C>['kind']
+
+/** Constraint name associated with a violation code. */
+export type ViolationNameOf<C extends string = string> = ViolationEntry<C>['name']
+
+/** Strict code-driven violation subject for a fully registered violation code. */
+export type KnownViolationSubject<C extends KnownViolationCode> = {
+  kind: ViolationKindOf<C>;
+  name: ViolationNameOf<C>;
+  code: C;
+  args: ViolationArgs<C>;
+}
+
+/** Machine-readable description of a validation failure. */
+export type ViolationSubject<
+  COrT extends string | readonly unknown[] = string,
+  K extends ViolationKind = COrT extends string ? ViolationKindOf<COrT> : ViolationKind,
+  C extends string = ResolveViolationSubjectCode<COrT>,
+  T extends readonly unknown[] = ResolveViolationSubjectArgs<COrT, C>,
+> = [COrT] extends [readonly unknown[]]
+  ? {
+      kind: K;
+      name: string;
+      code: C;
+      args: T;
+    }
+  : C extends KnownViolationCode
+    ? {
+        kind: K & ViolationKindOf<C>;
+        name: ViolationNameOf<C>;
+        code: C;
+        args: T & ViolationArgs<C>;
+      }
+    : {
+        kind: K;
+        name: string;
+        code: C;
+        args: T;
+      }
 
 /**
  * Structured validation error returned by assertions and composed validators.
@@ -82,9 +225,12 @@ export declare const collection: <V extends Violation>(violations: readonly V[])
 export type ConstraintMetadata = Readonly<Record<string, unknown>>
 
 /** Public descriptor entry for additional assertion-level checks. */
-export interface AssertionDescriptorConstraint {
-  readonly code: string;
-  readonly args: readonly unknown[]
+export interface AssertionDescriptorConstraint<
+  C extends string = string,
+  A extends readonly unknown[] = readonly unknown[],
+> {
+  readonly code: C;
+  readonly args: A
 }
 
 /** Shared descriptor shape returned by `describe(...)`. */
@@ -94,12 +240,16 @@ export interface ConstraintDescriptorBase<K extends string = string> {
 }
 
 /** Descriptor for leaf assertions created with `assert(...)` or compatible custom assertions. */
-export interface AssertionDescriptor extends ConstraintDescriptorBase<'assertion'> {
+export interface AssertionDescriptor<
+  C extends string = string,
+  A extends readonly unknown[] = readonly unknown[],
+  T extends readonly AssertionDescriptorConstraint[] = readonly AssertionDescriptorConstraint[],
+> extends ConstraintDescriptorBase<'assertion'> {
   readonly name: string;
   readonly bail: boolean;
-  readonly code?: string;
-  readonly args?: readonly unknown[];
-  readonly constraints: readonly AssertionDescriptorConstraint[]
+  readonly code: C;
+  readonly args: A;
+  readonly constraints: T
 }
 
 /** Generic fallback descriptor for custom validators without structural instrumentation. */
@@ -220,14 +370,38 @@ export type ConstraintDescriptor = BuiltInConstraintDescriptor | CustomConstrain
 export type AssertionConstraint<
   T = unknown,
   V = unknown,
-  A extends unknown[] = unknown[],
+  A extends readonly unknown[] = readonly unknown[],
   C extends string = string
-> = [
+> = readonly [
   Extractor<T, V>,
   Checker<V, A>,
   C,
   ...A
 ]
+
+/** Maps an assertion checker tuple into its public descriptor entry. */
+export type DescribeAssertionConstraint<C extends AssertionConstraint> =
+  C extends AssertionConstraint<unknown, unknown, infer A, infer Code>
+    ? AssertionDescriptorConstraint<Code, A>
+    : never
+
+/** Maps an assertion checker tuple into the violation subject it can produce. */
+export type AssertionConstraintSubject<C extends AssertionConstraint, N extends string = string> =
+  C extends AssertionConstraint<unknown, unknown, infer A, infer Code>
+    ? {
+        kind: 'assertion';
+        name: N;
+        code: Code;
+        args: A;
+      }
+    : never
+
+/** Maps assertion checker tuples into their public descriptor entries. */
+export type DescribeAssertionConstraintTuple<T extends readonly AssertionConstraint[]> = {
+  readonly [K in keyof T]: T[K] extends AssertionConstraint
+    ? DescribeAssertionConstraint<T[K]>
+    : never
+} & ReadonlyArray<DescribeAssertionConstraint<T[number]>>
 
 /**
  * Leaf-level validator that checks a single value and either succeeds with `null`
@@ -237,9 +411,19 @@ export type AssertionConstraint<
  */
 export type Assertion<
   T = unknown,
-  C extends AssertionConstraint[] = AssertionConstraint[]
-> = ((value: unknown) => MaybePromise<Omit<Violation, 'path'> | null>) & {
-  readonly name: string;
+  C extends readonly AssertionConstraint[] = readonly AssertionConstraint[],
+  Code extends string = string,
+  A extends readonly unknown[] = readonly unknown[],
+  Name extends string = string,
+> = ((value: unknown) => MaybePromise<Omit<Violation<
+  {
+    kind: 'assertion';
+    name: Name;
+    code: Code;
+    args: A;
+  } | AssertionConstraintSubject<C[number], Name>
+>, 'path'> | null>) & {
+  readonly name: Name;
   readonly bail: boolean;
   readonly constraints: C;
   readonly check: Predicate<T>;
@@ -255,7 +439,7 @@ export type Constraint<T = unknown> = Assertion<T> | Validator<T>
 
 /** Extracts the validated TypeScript type from a single constraint. */
 export type InferConstraint<C> =
-  C extends Assertion<infer T, AssertionConstraint[]>
+  C extends Assertion<infer T, readonly AssertionConstraint[], string, readonly unknown[], string>
     ? T
     : C extends Validator<infer T>
       ? T
@@ -307,24 +491,111 @@ export type UnknownKeysMode = 'passthrough' | 'strict'
 /** Field selector accepted by shape helpers that can point to the current level or a nested path. */
 export type ObjectShapeFieldSelector = PropertyKey | readonly PropertyKey[]
 
+type ResolveObjectShapeRefinementIssueCode<COrA extends string | readonly unknown[]> = COrA extends string ? COrA : string
+type ResolveObjectShapeRefinementIssueArgs<COrA extends string | readonly unknown[], C extends string> = [COrA] extends [readonly unknown[]]
+  ? COrA
+  : ViolationArgs<C>
+
 /** Machine-readable issue returned by an object-level shape refinement. */
-export type ObjectShapeRefinementIssue<A extends unknown[] = unknown[]> = {
+export type ObjectShapeRefinementIssue<
+  COrA extends string | readonly unknown[] = string,
+  C extends string = ResolveObjectShapeRefinementIssueCode<COrA>,
+  A extends readonly unknown[] = ResolveObjectShapeRefinementIssueArgs<COrA, C>,
+> = {
   path?: PropertyKey[];
-  code: string;
-  args?: A;
+  code: C;
+  args?: [COrA] extends [readonly unknown[]]
+    ? A
+    : C extends KnownViolationCode
+      ? A & ViolationArgs<C>
+      : A;
   value?: unknown;
 }
 
 /** Sync object-level rule that runs after the base shape has validated successfully. */
-export type ObjectShapeRefinement<T> = (
+export type ObjectShapeRefinement<
+  T,
+  I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue,
+> = (
   value: T
-) => MaybeMany<ObjectShapeRefinementIssue | null | undefined> | null | undefined
+) => MaybeMany<I | null | undefined> | null | undefined
+
+type KnownCodeViolation<C extends KnownViolationCode> = Violation<KnownViolationSubject<C>>
+
+type ShapeRefinementIssueSubject<I extends ObjectShapeRefinementIssue> =
+  I extends ObjectShapeRefinementIssue<string | readonly unknown[], infer C, infer A>
+    ? C extends KnownViolationCode
+      ? {
+          kind: 'validator';
+          name: 'shape' & ViolationNameOf<C>;
+          code: C;
+          args: A & ViolationArgs<C>;
+        }
+      : ViolationSubject<A, 'validator', C>
+    : never
+
+type ShapeRefinementIssueViolation<I extends ObjectShapeRefinementIssue> =
+  I extends ObjectShapeRefinementIssue
+    ? Violation<ShapeRefinementIssueSubject<I>>
+    : never
+
+type InferObjectDescriptorViolations<D extends ObjectDescriptor> = {
+  [K in keyof D]: InferMaybeManyViolations<D[K]>
+}[keyof D]
+
+/** Maps a single constraint into the union of violations it can produce. */
+export type InferConstraintViolations<C extends Constraint> =
+  C extends Assertion<unknown, infer AC, infer Code, infer Args, infer Name>
+    ? Violation<{
+        kind: 'assertion';
+        name: Name;
+        code: Code;
+        args: Args;
+      } | AssertionConstraintSubject<AC[number], Name>>
+    : C extends ObjectShape<infer D, infer M, readonly ObjectShapeRuleDescriptor[], infer RI>
+      ? KnownCodeViolation<'type.record'>
+        | (M extends 'strict' ? KnownCodeViolation<'shape.unknown-key'> : never)
+        | InferObjectDescriptorViolations<D>
+        | ShapeRefinementIssueViolation<RI>
+      : C extends OptionalValidator<infer Child>
+        ? InferMaybeManyViolations<Child>
+        : C extends NullableValidator<infer Child>
+          ? InferMaybeManyViolations<Child>
+          : C extends NullishValidator<infer Child>
+            ? InferMaybeManyViolations<Child>
+            : C extends EachValidator<infer Child>
+              ? KnownCodeViolation<'type.array'> | InferMaybeManyViolations<Child>
+              : C extends TupleValidator<infer Items>
+                ? KnownCodeViolation<'type.array'>
+                  | KnownCodeViolation<'tuple.length'>
+                  | InferMaybeManyViolations<Items[number]>
+                : C extends UnionValidator<infer Branches>
+                  ? KnownCodeViolation<'union.no-match'> | InferMaybeManyViolations<Branches[number]>
+                  : C extends DiscriminatedUnionValidator<PropertyKey, infer Variants>
+                    ? KnownCodeViolation<'type.record'>
+                      | KnownCodeViolation<'union.invalid-discriminator'>
+                      | InferMaybeManyViolations<Variants[keyof Variants]>
+                    : C extends RecordValidator<infer Values>
+                      ? KnownCodeViolation<'type.record'> | InferMaybeManyViolations<Values>
+                      : C extends Validator
+                        ? Violation
+                        : never
+
+/** Maps one-or-many constraints into the union of violations they can produce. */
+export type InferMaybeManyViolations<C extends MaybeMany<Constraint>> =
+  C extends readonly []
+    ? never
+    : C extends readonly Constraint[]
+      ? InferConstraintViolations<C[number]>
+      : C extends Constraint
+        ? InferConstraintViolations<C>
+        : never
 
 /** Successful `validate(...)` tuple with typed `validated` value. */
 export type ValidationSuccess<T> = [ok: true, validated: T, violations: []]
 
 /** Failed `validate(...)` tuple with original value and collected violations. */
-export type ValidationFailure = [ok: false, validated: unknown, violations: Violation[]]
+export type ValidationFailure<V extends Violation = Violation> = [ok: false, validated: unknown, violations: V[]]
 
 /**
  * The result tuple returned by `validate(...)` and `validate.sync(...)`.
@@ -335,10 +606,10 @@ export type ValidationFailure = [ok: false, validated: unknown, violations: Viol
  * Example:
  * `if (ok) validated.name.toUpperCase()`
  */
-export type ValidationTuple<T> = ValidationSuccess<T> | ValidationFailure
+export type ValidationTuple<T, V extends Violation = Violation> = ValidationSuccess<T> | ValidationFailure<V>
 
 /** Alias for `ValidationTuple<T>`. */
-export type ValidationResult<T> = ValidationTuple<T>
+export type ValidationResult<T, V extends Violation = Violation> = ValidationTuple<T, V>
 
 /** Attaches read-only metadata to a constraint without changing validation semantics. */
 export declare const meta: <const C extends Constraint, const M extends ConstraintMetadata>(constraint: C, metadata: M) => C
@@ -401,35 +672,39 @@ export interface ObjectShape<
   D extends ObjectDescriptor = ObjectDescriptor,
   M extends UnknownKeysMode = 'passthrough',
   R extends readonly ObjectShapeRuleDescriptor[] = readonly ObjectShapeRuleDescriptor[],
+  RI extends ObjectShapeRefinementIssue = never,
 > extends Validator<InferObjectDescriptor<D>> {
   readonly descriptor: D;
   readonly unknownKeys: M;
-  refine(
-    refinement: ObjectShapeRefinement<InferObjectDescriptor<D>>
-  ): ObjectShape<D, M, [...R, GenericObjectShapeRuleDescriptor<'refine'>]>;
-  refine<const RD extends GenericObjectShapeRuleDescriptor<string>>(
-    refinement: ObjectShapeRefinement<InferObjectDescriptor<D>>,
+  refine<const I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue>(
+    refinement: ObjectShapeRefinement<InferObjectDescriptor<D>, I>
+  ): ObjectShape<D, M, [...R, GenericObjectShapeRuleDescriptor<'refine'>], RI | I>;
+  refine<
+    const I extends ObjectShapeRefinementIssue = ObjectShapeRefinementIssue,
+    const RD extends GenericObjectShapeRuleDescriptor<string> = GenericObjectShapeRuleDescriptor<'refine'>
+  >(
+    refinement: ObjectShapeRefinement<InferObjectDescriptor<D>, I>,
     descriptor: RD
-  ): ObjectShape<D, M, [...R, RD]>;
+  ): ObjectShape<D, M, [...R, RD], RI | I>;
   fieldsMatch<const K extends readonly [ObjectShapeFieldSelector, ObjectShapeFieldSelector]>(
     keys: K
-  ): ObjectShape<D, M, [...R, FieldsMatchObjectShapeRuleDescriptor<K[0], K[1]>]>;
-  strict(): ObjectShape<D, 'strict', R>;
-  passthrough(): ObjectShape<D, 'passthrough', R>;
-  pick<const K extends readonly (keyof D)[]>(keys: K): ObjectShape<Pick<D, K[number]>, M, []>;
-  omit<const K extends readonly (keyof D)[]>(keys: K): ObjectShape<Omit<D, K[number]>, M, []>;
-  partial(): ObjectShape<PartialObjectDescriptor<D>, M, []>;
-  extend<const E extends ObjectDescriptor>(descriptor: E): ObjectShape<MergeObjectDescriptors<D, E>, M, []>;
+  ): ObjectShape<D, M, [...R, FieldsMatchObjectShapeRuleDescriptor<K[0], K[1]>], RI | ObjectShapeRefinementIssue<'shape.fields.mismatch'>>;
+  strict(): ObjectShape<D, 'strict', R, RI>;
+  passthrough(): ObjectShape<D, 'passthrough', R, RI>;
+  pick<const K extends readonly (keyof D)[]>(keys: K): ObjectShape<Pick<D, K[number]>, M, [], never>;
+  omit<const K extends readonly (keyof D)[]>(keys: K): ObjectShape<Omit<D, K[number]>, M, [], never>;
+  partial(): ObjectShape<PartialObjectDescriptor<D>, M, [], never>;
+  extend<const E extends ObjectDescriptor>(descriptor: E): ObjectShape<MergeObjectDescriptors<D, E>, M, [], never>;
   merge<const E extends ObjectDescriptor, OM extends UnknownKeysMode, OR extends readonly ObjectShapeRuleDescriptor[]>(
-    shape: ObjectShape<E, OM, OR>
-  ): ObjectShape<MergeObjectDescriptors<D, E>, M, []>;
+    shape: ObjectShape<E, OM, OR, ObjectShapeRefinementIssue>
+  ): ObjectShape<MergeObjectDescriptors<D, E>, M, [], never>;
 }
 
 /** Helper that maps a single constraint into its public `describe(...)` result. */
 export type DescribeConstraint<C extends Constraint> =
-  C extends Assertion
-    ? AssertionDescriptor
-    : C extends ObjectShape<infer D, infer M, infer R>
+  C extends Assertion<unknown, infer AC, infer Code, infer Args, string>
+    ? AssertionDescriptor<Code, Args, DescribeAssertionConstraintTuple<AC>>
+    : C extends ObjectShape<infer D, infer M, infer R, ObjectShapeRefinementIssue>
       ? ShapeConstraintDescriptor<DescribeObjectDescriptor<D>, R> & { readonly unknownKeys: M }
       : C extends OptionalValidator<infer Child>
         ? WrapperConstraintDescriptor<'optional', DescribeMaybeMany<Child>>

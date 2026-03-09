@@ -7,6 +7,7 @@
 - [Public API](./05-public-api.md) - Overview of root exports, subpath exports, validation result shape, and how the package surface is split.
 - [Common Recipes](./06-common-recipes.md) - Task-oriented recipes for choosing the right layer, validating payloads, reusing shapes, shaping UI errors, and exporting schemas safely.
 - [AI Reference](./07-ai-reference.md) - Compact contract summary for AI agents, tooling, and quick lookup of stable library semantics.
+- [Violation Code Types](./08-violation-code-types.md) - Detailed guide to `ViolationCodeRegistry`, `ViolationCode`, literal code preservation in descriptors, and external registry augmentation.
 
 ## Translations
 

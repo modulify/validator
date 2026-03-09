@@ -261,6 +261,7 @@ const node = describe(registration)
 Подробные руководства:
 
 - [Руководство по метаданным и интроспекции](./02-metadata-and-introspection.md)
+- [Руководство по типам кодов нарушений](./08-violation-code-types.md)
 
 ## Ментальная модель
 
@@ -308,6 +309,7 @@ const emailErrors = errors.at(['profile', 'email'])
 Подробные руководства:
 
 - [Руководство по нарушениям](./03-violations.md)
+- [Руководство по типам кодов нарушений](./08-violation-code-types.md)
 
 ## Экспорт JSON Schema
 

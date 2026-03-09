@@ -258,6 +258,7 @@ const node = describe(registration)
 Detailed guides:
 
 - [Metadata And Introspection Guide](./docs/en/02-metadata-and-introspection.md)
+- [Violation Code Types Guide](./docs/en/08-violation-code-types.md)
 
 ## Mental Model
 
@@ -305,6 +306,7 @@ const emailErrors = errors.at(['profile', 'email'])
 Detailed guides:
 
 - [Violations Guide](./docs/en/03-violations.md)
+- [Violation Code Types Guide](./docs/en/08-violation-code-types.md)
 
 ## JSON Schema Export
 

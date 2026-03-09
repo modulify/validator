@@ -10,7 +10,9 @@ import {
 } from 'vitest'
 
 import {
+  collection,
   each,
+  hasLength,
   shape,
   isDefined,
   isString,
@@ -100,6 +102,29 @@ describe('validate tuple types', () => {
       assertType<[]>(violations)
     } else {
       assertType<Violation[]>(violations)
+    }
+  })
+
+  test('narrows violation payloads by code inside ViolationCollection.map', () => {
+    const [ok, , violations] = validate.sync('ab', [isString, hasLength({ min: 3 })])
+
+    if (!ok) {
+      const messages = collection(violations).map(violation => {
+        switch (violation.violates.code) {
+          case 'type.string':
+            assertType<'isString'>(violation.violates.name)
+            assertType<[]>(violation.violates.args)
+            return violation.violates.name
+          case 'length.min':
+            assertType<'hasLength'>(violation.violates.name)
+            assertType<readonly [min: number]>(violation.violates.args)
+            return String(violation.violates.args[0])
+          default:
+            return violation.violates.code
+        }
+      })
+
+      assertType<string[]>(messages)
     }
   })
 })

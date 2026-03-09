@@ -28,8 +28,24 @@ import {
   validate,
 } from '@/index'
 
-const assertionSubject = (name: string, code: string, args: unknown[] = []): ViolationSubject => ({ kind: 'assertion', name, code, args })
-const validatorSubject = (name: string, code: string, args: unknown[] = []): ViolationSubject => ({ kind: 'validator', name, code, args })
+const assertionSubject = <C extends string, A extends readonly unknown[] = readonly unknown[]>(
+  name: string,
+  code: C,
+  args: A = [] as unknown as A
+): ViolationSubject<A, 'assertion', C> => ({ kind: 'assertion', name, code, args }) as unknown as ViolationSubject<
+  A,
+  'assertion',
+  C
+>
+const validatorSubject = <C extends string, A extends readonly unknown[] = readonly unknown[]>(
+  name: string,
+  code: C,
+  args: A = [] as unknown as A
+): ViolationSubject<A, 'validator', C> => ({ kind: 'validator', name, code, args }) as unknown as ViolationSubject<
+  A,
+  'validator',
+  C
+>
 
 const createAsyncAssertion = (
   name: string,

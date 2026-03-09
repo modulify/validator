@@ -39,6 +39,24 @@ export { assert }
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 type Defined = {} | null
 
+type LengthAssertionConstraint =
+  | AssertionConstraint<string | unknown[], number, [exact: number], 'length.exact'>
+  | AssertionConstraint<string | unknown[], number, [max: number], 'length.max'>
+  | AssertionConstraint<string | unknown[], number, [min: number], 'length.min'>
+  | AssertionConstraint<string | unknown[], number, [range: [number, number]], 'length.range'>
+
+type SizeAssertionConstraint =
+  | AssertionConstraint<Map<unknown, unknown> | Set<unknown>, number, [exact: number], 'size.exact'>
+  | AssertionConstraint<Map<unknown, unknown> | Set<unknown>, number, [max: number], 'size.max'>
+  | AssertionConstraint<Map<unknown, unknown> | Set<unknown>, number, [min: number], 'size.min'>
+  | AssertionConstraint<Map<unknown, unknown> | Set<unknown>, number, [range: [number, number]], 'size.range'>
+
+type ValueAssertionConstraint =
+  | AssertionConstraint<number, number, [exact: number], 'number.exact'>
+  | AssertionConstraint<number, number, [max: number], 'number.max'>
+  | AssertionConstraint<number, number, [min: number], 'number.min'>
+  | AssertionConstraint<number, number, [range: [number, number]], 'number.range'>
+
 export const isBoolean = assert(_isBoolean, { name: 'isBoolean', bail: true, code: 'type.boolean' })
 export const isBigInt = assert(_isBigInt, { name: 'isBigInt', bail: true, code: 'type.bigint' })
 export const isBlob = assert(_isBlob, { name: 'isBlob', bail: true, code: 'type.blob' })
@@ -72,12 +90,12 @@ export const hasLength = ({
   range?: [number, number] | null;
   bail?: boolean;
 } = {}) => {
-  const constraints: AssertionConstraint<string | unknown[]>[] = []
+  const constraints: LengthAssertionConstraint[] = []
 
-  if (exact !== null) constraints.push([length, isEqual, 'length.exact', exact])
-  if (max !== null) constraints.push([length, isLte, 'length.max', max])
-  if (min !== null) constraints.push([length, isGte, 'length.min', min])
-  if (range !== null) constraints.push([length, inRange, 'length.range', range])
+  if (exact !== null) constraints.push([length, isEqual, 'length.exact', exact] as const)
+  if (max !== null) constraints.push([length, isLte, 'length.max', max] as const)
+  if (min !== null) constraints.push([length, isGte, 'length.min', min] as const)
+  if (range !== null) constraints.push([length, inRange, 'length.range', range] as const)
 
   return assert(
     (value: unknown): value is string | unknown[] => isArray(value) || _isString(value),
@@ -103,12 +121,12 @@ export const hasSize = ({
   range?: [number, number] | null;
   bail?: boolean;
 } = {}) => {
-  const constraints: AssertionConstraint<Map<unknown, unknown> | Set<unknown>>[] = []
+  const constraints: SizeAssertionConstraint[] = []
 
-  if (exact !== null) constraints.push([size, isEqual, 'size.exact', exact])
-  if (max !== null) constraints.push([size, isLte, 'size.max', max])
-  if (min !== null) constraints.push([size, isGte, 'size.min', min])
-  if (range !== null) constraints.push([size, inRange, 'size.range', range])
+  if (exact !== null) constraints.push([size, isEqual, 'size.exact', exact] as const)
+  if (max !== null) constraints.push([size, isLte, 'size.max', max] as const)
+  if (min !== null) constraints.push([size, isGte, 'size.min', min] as const)
+  if (range !== null) constraints.push([size, inRange, 'size.range', range] as const)
 
   return assert(
     (value: unknown): value is Map<unknown, unknown> | Set<unknown> => _isMap(value) || _isSet(value),
@@ -140,7 +158,7 @@ export const hasPattern = (
     matchesPattern,
     'string.pattern',
     pattern,
-  ]]
+  ]] as const
 )
 
 export const startsWith = (
@@ -162,7 +180,7 @@ export const startsWith = (
     _startsWith,
     'string.starts-with',
     prefix,
-  ]]
+  ]] as const
 )
 
 export const endsWith = (
@@ -184,7 +202,7 @@ export const endsWith = (
     _endsWith,
     'string.ends-with',
     suffix,
-  ]]
+  ]] as const
 )
 
 export const hasValue = ({
@@ -200,12 +218,12 @@ export const hasValue = ({
   range?: [number, number] | null;
   bail?: boolean;
 } = {}) => {
-  const constraints: AssertionConstraint<number>[] = []
+  const constraints: ValueAssertionConstraint[] = []
 
-  if (exact !== null) constraints.push([(value: number) => value, isEqual, 'number.exact', exact])
-  if (max !== null) constraints.push([(value: number) => value, isLte, 'number.max', max])
-  if (min !== null) constraints.push([(value: number) => value, isGte, 'number.min', min])
-  if (range !== null) constraints.push([(value: number) => value, inRange, 'number.range', range])
+  if (exact !== null) constraints.push([(value: number) => value, isEqual, 'number.exact', exact] as const)
+  if (max !== null) constraints.push([(value: number) => value, isLte, 'number.max', max] as const)
+  if (min !== null) constraints.push([(value: number) => value, isGte, 'number.min', min] as const)
+  if (range !== null) constraints.push([(value: number) => value, inRange, 'number.range', range] as const)
 
   return assert(
     _isNumber,
@@ -237,7 +255,7 @@ export const multipleOf = (
     isMultipleOf,
     'number.multiple-of',
     step,
-  ]]
+  ]] as const
 )
 
 export const oneOf = <Actual = unknown>(

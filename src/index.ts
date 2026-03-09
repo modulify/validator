@@ -1,10 +1,10 @@
 import type {
   Constraint,
   InferConstraints,
-  InferMaybeManyViolations,
+  InferViolations,
   MaybeMany,
   Recursive,
-  ValidationTuple,
+  ValidationResult,
   Violation,
 } from '~types'
 
@@ -22,48 +22,51 @@ export {
 export type {
   AllOfConstraintDescriptor,
   AssertionDescriptor,
-  AssertionDescriptorConstraint,
+  AssertionConstraintDescriptor,
   AsyncObjectShapeRuleDescriptor,
+  BaseConstraintDescriptor,
   Constraint,
   ConstraintDescriptor,
-  ConstraintDescriptorBase,
   ConstraintMetadata,
   CustomConstraintDescriptor,
   DescribeAssertionConstraint,
   DescribeAssertionConstraintTuple,
   DescribeConstraint,
   DescribeConstraintTuple,
-  DescribeMaybeMany,
-  DescribeObjectDescriptor,
+  DescribeConstraints,
+  DescribeShapeDescriptor,
   DescribedValidator,
   DiscriminatedUnionValidator,
   EachValidator,
   FieldsMatchObjectShapeRuleDescriptor,
-  GenericObjectShapeRuleDescriptor,
+  InferShape,
   InferConstraint,
   InferConstraints,
   InferConstraintViolations,
-  InferMaybeManyViolations,
+  InferViolations,
+  MergeShapeDescriptors,
+  OpaqueValidatorDescriptor,
+  PartialShapeDescriptor,
   DiscriminatedUnionConstraintDescriptor,
   EachConstraintDescriptor,
   NullableValidator,
   NullishValidator,
   KnownViolationCode,
   KnownViolationSubject,
-  ObjectShapeFieldSelector,
-  ObjectShapeAsyncRefinement,
-  ObjectShapeRefinement,
-  ObjectShapeRefineMethod,
-  ObjectShapeRefineMethodSync,
-  ObjectShapeRefinementIssue,
-  ObjectShapeRefinementSync,
   ObjectShapeRuleDescriptor,
   ObjectShapeRuleDescriptorBase,
-  ObjectShapeSyncRefinement,
   OptionalValidator,
   RecordValidator,
   RecordConstraintDescriptor,
+  ShapeDescriptor,
+  ShapeFieldSelector,
+  ShapeRefinement,
+  ShapeRefineMethod,
+  ShapeRefineMethodSync,
+  ShapeRefinementViolationInput,
   ShapeConstraintDescriptor,
+  SyncObjectShapeRuleDescriptor,
+  SyncShapeRefinement,
   TupleValidator,
   TupleConstraintDescriptor,
   UnionValidator,
@@ -80,10 +83,8 @@ export type {
   ViolationSubject,
   ViolationTreeNode,
   UnionConstraintDescriptor,
-  ValidationTuple,
   ValidationResult,
   Validator,
-  ValidatorDescriptor,
   Violation,
   WrapperConstraintDescriptor,
 } from '~types'
@@ -159,7 +160,7 @@ const collectViolationsSync = (
 
 collectViolationsSync.sync = true as const
 
-function toResult<T, V extends Violation>(value: unknown, violations: V[]): ValidationTuple<T, V> {
+function toResult<T, V extends Violation>(value: unknown, violations: V[]): ValidationResult<T, V> {
   return violations.length === 0
     ? [true, value as T, []]
     : [false, value, violations]
@@ -208,24 +209,24 @@ export const validate = Object.assign(
   async <const C extends MaybeMany<Constraint>>(
     value: unknown,
     constraints: C
-  ): Promise<ValidationTuple<InferConstraints<C>, InferMaybeManyViolations<C>>> => {
+  ): Promise<ValidationResult<InferConstraints<C>, InferViolations<C>>> => {
     const violations = await collectViolations(value, constraints)
 
-    return toResult<InferConstraints<C>, InferMaybeManyViolations<C>>(
+    return toResult<InferConstraints<C>, InferViolations<C>>(
       value,
-      violations as InferMaybeManyViolations<C>[]
+      violations as InferViolations<C>[]
     )
   },
   {
     sync<const C extends MaybeMany<Constraint>>(
       value: unknown,
       constraints: C
-    ): ValidationTuple<InferConstraints<C>, InferMaybeManyViolations<C>> {
+    ): ValidationResult<InferConstraints<C>, InferViolations<C>> {
       const violations = collectViolationsSync(value, constraints)
 
-      return toResult<InferConstraints<C>, InferMaybeManyViolations<C>>(
+      return toResult<InferConstraints<C>, InferViolations<C>>(
         value,
-        violations as InferMaybeManyViolations<C>[]
+        violations as InferViolations<C>[]
       )
     },
   }

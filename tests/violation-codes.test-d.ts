@@ -8,7 +8,7 @@ declare module '@/index' {
 
 import type {
   KnownViolationSubject,
-  ObjectShapeRefinementIssue,
+  ShapeRefinementViolationInput,
   ViolationArgs,
   ViolationCode,
   ViolationEntry,
@@ -49,7 +49,7 @@ describe('violation code registry augmentation', () => {
     const issue = {
       code: 'shape.password.mismatch' as const,
       args: [] as const,
-    } satisfies ObjectShapeRefinementIssue<'shape.password.mismatch'>
+    } satisfies ShapeRefinementViolationInput<'shape.password.mismatch'>
 
     const legacySubject = {
       kind: 'runtime' as const,

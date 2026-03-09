@@ -43,7 +43,7 @@ Violations — это прежде всего структурированные
 ## Контракт результата валидации
 
 ```typescript
-type ValidationTuple<T> =
+type ValidationResult<T> =
   | [ok: true, validated: T, violations: []]
   | [ok: false, validated: unknown, violations: Violation[]]
 ```

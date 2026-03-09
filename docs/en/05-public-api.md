@@ -67,7 +67,7 @@ These are the main utilities for post-processing machine-readable validation fai
 `validate(...)` and `validate.sync(...)` return:
 
 ```typescript
-type ValidationTuple<T> =
+type ValidationResult<T> =
   | [ok: true, validated: T, violations: []]
   | [ok: false, validated: unknown, violations: Violation[]]
 ```

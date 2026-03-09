@@ -158,7 +158,7 @@ This part does not depend on the global union extraction. The literal is preserv
 The same idea applies to object-level refinement issues.
 
 ```typescript
-import type { ObjectShapeRefinementIssue } from '@modulify/validator'
+import type { ShapeRefinementViolationInput } from '@modulify/validator'
 import {
   isEmail,
   isString,
@@ -180,7 +180,7 @@ const signUpForm = shape({
     path: ['confirmation', 'password'],
     code: 'profile.password.mismatch',
     args: [],
-  }] satisfies ObjectShapeRefinementIssue<'profile.password.mismatch'>
+  }] satisfies ShapeRefinementViolationInput<'profile.password.mismatch'>
 })
 ```
 

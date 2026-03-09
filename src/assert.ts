@@ -136,7 +136,7 @@ const createAssertion = <
     },
   })
 
-  return attachConstraintDescriptor(assertion, () => ({
+  return /* @__PURE__ */ attachConstraintDescriptor(assertion, () => ({
     kind: 'assertion',
     name: meta.name,
     bail: meta.bail,

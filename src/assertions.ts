@@ -184,25 +184,25 @@ const buildValueConstraints = <const O extends BoundedAssertionOptions>(options:
   return constraints as unknown as ValueConstraintTupleFromOptions<O>
 }
 
-export const isBoolean = assert(_isBoolean, { name: 'isBoolean', bail: true, code: 'type.boolean' })
-export const isBigInt = assert(_isBigInt, { name: 'isBigInt', bail: true, code: 'type.bigint' })
-export const isBlob = assert(_isBlob, { name: 'isBlob', bail: true, code: 'type.blob' })
-export const isDate = assert(_isDate, { name: 'isDate', bail: true, code: 'type.date' })
-export const isDefined = assert((value: unknown): value is Defined => value !== undefined, {
+export const isBoolean = /* @__PURE__ */ assert(_isBoolean, { name: 'isBoolean', bail: true, code: 'type.boolean' })
+export const isBigInt = /* @__PURE__ */ assert(_isBigInt, { name: 'isBigInt', bail: true, code: 'type.bigint' })
+export const isBlob = /* @__PURE__ */ assert(_isBlob, { name: 'isBlob', bail: true, code: 'type.blob' })
+export const isDate = /* @__PURE__ */ assert(_isDate, { name: 'isDate', bail: true, code: 'type.date' })
+export const isDefined = /* @__PURE__ */ assert((value: unknown): value is Defined => value !== undefined, {
   name: 'isDefined',
   bail: true,
   code: 'value.defined',
 })
-export const isEmail = assert(_isEmail, { name: 'isEmail', bail: true, code: 'string.email' })
-export const isFile = assert(_isFile, { name: 'isFile', bail: true, code: 'type.file' })
-export const isFunction = assert(_isFunction, { name: 'isFunction', bail: true, code: 'type.function' })
-export const isMap = assert(_isMap, { name: 'isMap', bail: true, code: 'type.map' })
-export const isNaN = assert(_isNaN, { name: 'isNaN', bail: true, code: 'number.nan' })
-export const isNull = assert(_isNull, { name: 'isNull', bail: true, code: 'type.null' })
-export const isNumber = assert(_isNumber, { name: 'isNumber', bail: true, code: 'type.number' })
-export const isSet = assert(_isSet, { name: 'isSet', bail: true, code: 'type.set' })
-export const isString = assert(_isString, { name: 'isString', bail: true, code: 'type.string' })
-export const isSymbol = assert(_isSymbol, { name: 'isSymbol', bail: true, code: 'type.symbol' })
+export const isEmail = /* @__PURE__ */ assert(_isEmail, { name: 'isEmail', bail: true, code: 'string.email' })
+export const isFile = /* @__PURE__ */ assert(_isFile, { name: 'isFile', bail: true, code: 'type.file' })
+export const isFunction = /* @__PURE__ */ assert(_isFunction, { name: 'isFunction', bail: true, code: 'type.function' })
+export const isMap = /* @__PURE__ */ assert(_isMap, { name: 'isMap', bail: true, code: 'type.map' })
+export const isNaN = /* @__PURE__ */ assert(_isNaN, { name: 'isNaN', bail: true, code: 'number.nan' })
+export const isNull = /* @__PURE__ */ assert(_isNull, { name: 'isNull', bail: true, code: 'type.null' })
+export const isNumber = /* @__PURE__ */ assert(_isNumber, { name: 'isNumber', bail: true, code: 'type.number' })
+export const isSet = /* @__PURE__ */ assert(_isSet, { name: 'isSet', bail: true, code: 'type.set' })
+export const isString = /* @__PURE__ */ assert(_isString, { name: 'isString', bail: true, code: 'type.string' })
+export const isSymbol = /* @__PURE__ */ assert(_isSymbol, { name: 'isSymbol', bail: true, code: 'type.symbol' })
 
 export const hasLength = <const O extends BoundedAssertionOptions = EmptyOptions>(
   options: O = {} as O
@@ -210,7 +210,7 @@ export const hasLength = <const O extends BoundedAssertionOptions = EmptyOptions
   const { bail = false } = options
   const constraints = buildLengthConstraints(options)
 
-  return refine(
+  return /* @__PURE__ */ refine(
     {
       name: 'hasLength',
       bail,
@@ -226,7 +226,7 @@ export const hasSize = <const O extends BoundedAssertionOptions = EmptyOptions>(
   const { bail = false } = options
   const constraints = buildSizeConstraints(options)
 
-  return refine(
+  return /* @__PURE__ */ refine(
     {
       name: 'hasSize',
       bail,
@@ -243,7 +243,7 @@ export const hasPattern = (
   }: {
     bail?: boolean;
   } = {}
-) => refine(
+) => /* @__PURE__ */ refine(
   {
     name: 'hasPattern',
     bail,
@@ -264,7 +264,7 @@ export const startsWith = (
   }: {
     bail?: boolean;
   } = {}
-) => refine(
+) => /* @__PURE__ */ refine(
   {
     name: 'startsWith',
     bail,
@@ -285,7 +285,7 @@ export const endsWith = (
   }: {
     bail?: boolean;
   } = {}
-) => refine(
+) => /* @__PURE__ */ refine(
   {
     name: 'endsWith',
     bail,
@@ -305,7 +305,7 @@ export const hasValue = <const O extends BoundedAssertionOptions = EmptyOptions>
   const { bail = false } = options
   const constraints = buildValueConstraints(options)
 
-  return refine(
+  return /* @__PURE__ */ refine(
     {
       name: 'hasValue',
       bail,
@@ -322,7 +322,7 @@ export const multipleOf = <const Step extends number>(
   }: {
     bail?: boolean;
   } = {}
-) => refine(
+) => /* @__PURE__ */ refine(
   {
     name: 'multipleOf',
     bail,
@@ -348,7 +348,7 @@ export const oneOf = <Actual = unknown>(
 ) => {
   const haystack = isArray(values) ? values : Object.values(values)
 
-  return assert((value: unknown): value is Actual => haystack.some(item => equalTo(item, value)), {
+  return /* @__PURE__ */ assert((value: unknown): value is Actual => haystack.some(item => equalTo(item, value)), {
     name: 'oneOf',
     bail,
     code: 'value.one-of',

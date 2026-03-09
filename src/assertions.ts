@@ -12,10 +12,17 @@ import { length } from '@/extractors'
 import {
   isArray,
   isBoolean as _isBoolean,
+  isBigInt as _isBigInt,
+  isBlob as _isBlob,
   isDate as _isDate,
   isEmail as _isEmail,
+  isFile as _isFile,
+  isFunction as _isFunction,
+  isMap as _isMap,
+  isNaN as _isNaN,
   isNull as _isNull,
   isNumber as _isNumber,
+  isSet as _isSet,
   isString as _isString,
   isSymbol as _isSymbol,
 } from '@/predicates'
@@ -26,6 +33,8 @@ export { assert }
 type Defined = {} | null
 
 export const isBoolean = assert(_isBoolean, { name: 'isBoolean', bail: true, code: 'type.boolean' })
+export const isBigInt = assert(_isBigInt, { name: 'isBigInt', bail: true, code: 'type.bigint' })
+export const isBlob = assert(_isBlob, { name: 'isBlob', bail: true, code: 'type.blob' })
 export const isDate = assert(_isDate, { name: 'isDate', bail: true, code: 'type.date' })
 export const isDefined = assert((value: unknown): value is Defined => value !== undefined, {
   name: 'isDefined',
@@ -33,8 +42,13 @@ export const isDefined = assert((value: unknown): value is Defined => value !== 
   code: 'value.defined',
 })
 export const isEmail = assert(_isEmail, { name: 'isEmail', bail: true, code: 'string.email' })
+export const isFile = assert(_isFile, { name: 'isFile', bail: true, code: 'type.file' })
+export const isFunction = assert(_isFunction, { name: 'isFunction', bail: true, code: 'type.function' })
+export const isMap = assert(_isMap, { name: 'isMap', bail: true, code: 'type.map' })
+export const isNaN = assert(_isNaN, { name: 'isNaN', bail: true, code: 'number.nan' })
 export const isNull = assert(_isNull, { name: 'isNull', bail: true, code: 'type.null' })
 export const isNumber = assert(_isNumber, { name: 'isNumber', bail: true, code: 'type.number' })
+export const isSet = assert(_isSet, { name: 'isSet', bail: true, code: 'type.set' })
 export const isString = assert(_isString, { name: 'isString', bail: true, code: 'type.string' })
 export const isSymbol = assert(_isSymbol, { name: 'isSymbol', bail: true, code: 'type.symbol' })
 

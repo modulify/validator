@@ -20,6 +20,16 @@ export function isBoolean (value: unknown): value is boolean {
   return typeof value === 'boolean'
 }
 
+/** Checks if a value is a bigint */
+export function isBigInt (value: unknown): value is bigint {
+  return typeof value === 'bigint'
+}
+
+/** Checks if a value is a Blob */
+export function isBlob (value: unknown): value is Blob {
+  return typeof Blob !== 'undefined' && value instanceof Blob
+}
+
 /** Checks if value is Date */
 export function isDate (value: unknown): value is Date {
   return value instanceof Date
@@ -35,6 +45,28 @@ export function isEmail (value: unknown): value is string {
 /** Creates a predicate that checks if a value is equal to specified */
 export function isExact <T = unknown>(exact: T){
   return (value: unknown): value is T => value === exact
+}
+
+/** Checks if a value is a File */
+export function isFile (value: unknown): value is File {
+  return typeof File !== 'undefined' && value instanceof File
+}
+
+/** Checks if a value is a function */
+export function isFunction<T extends (...args: never[]) => unknown = (...args: never[]) => unknown>(
+  value: unknown
+): value is T {
+  return typeof value === 'function'
+}
+
+/** Checks if a value is a Map */
+export function isMap<K = unknown, V = unknown>(value: unknown): value is Map<K, V> {
+  return value instanceof Map
+}
+
+/** Checks if a value is NaN */
+export function isNaN (value: unknown): value is number {
+  return typeof value === 'number' && Number.isNaN(value)
 }
 
 /** Checks if a value is null */
@@ -55,6 +87,11 @@ export function isObject (value: unknown): value is object {
 /** Check if a value is a record like Record<PropertyKey, unknown> */
 export function isRecord (value: unknown): value is Record<PropertyKey, unknown> {
   return isObject(value) && !isNull(value) && constructorOf(value) === Object && Object.keys(prototypeOf(value)).length === 0
+}
+
+/** Checks if a value is a Set */
+export function isSet<T = unknown>(value: unknown): value is Set<T> {
+  return value instanceof Set
 }
 
 /** Checks if a value is a string */

@@ -394,6 +394,12 @@ const exportAssertion = (
     case 'isBoolean':
       return { type: 'boolean' }
 
+    case 'isBigInt':
+      return unsupported(descriptor, context, 'bigint values cannot be represented in JSON Schema')
+
+    case 'isBlob':
+      return unsupported(descriptor, context, 'Blob instances do not have a stable JSON Schema representation')
+
     case 'isNull':
       return { type: 'null' }
 
@@ -403,8 +409,20 @@ const exportAssertion = (
         format: 'email',
       }
 
+    case 'isFile':
+      return unsupported(descriptor, context, 'File instances do not have a stable JSON Schema representation')
+
+    case 'isFunction':
+      return unsupported(descriptor, context, 'functions cannot be represented in JSON Schema')
+
     case 'isDefined':
       return {}
+
+    case 'isMap':
+      return unsupported(descriptor, context, 'Map instances do not have a stable JSON Schema representation')
+
+    case 'isNaN':
+      return unsupported(descriptor, context, 'NaN cannot be represented in JSON Schema')
 
     case 'exact':
       return exactSchema(descriptor, context)
@@ -417,6 +435,9 @@ const exportAssertion = (
 
     case 'isDate':
       return unsupported(descriptor, context, 'Date instances do not have a stable JSON Schema representation')
+
+    case 'isSet':
+      return unsupported(descriptor, context, 'Set instances do not have a stable JSON Schema representation')
 
     case 'isSymbol':
       return unsupported(descriptor, context, 'symbols cannot be represented in JSON Schema')

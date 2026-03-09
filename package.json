@@ -93,6 +93,14 @@
   "publishConfig": {
     "access": "public"
   },
+  "files": [
+    "dist",
+    "types",
+    "docs",
+    "README.md",
+    "CHANGELOG.md",
+    "logo.png"
+  ],
   "keywords": [
     "validate",
     "validator",

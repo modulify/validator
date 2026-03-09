@@ -58,6 +58,31 @@ In TypeScript this means:
 
 This is useful when adapters inspect descriptors and want code-aware branching without hand-written casts.
 
+The same precision now flows into `validate(...)` for parameterized built-ins.
+
+```typescript
+import {
+  collection,
+  hasLength,
+  validate,
+} from '@modulify/validator'
+
+const [ok, , violations] = validate.sync('ab', hasLength({ min: 3 }))
+
+if (!ok) {
+  collection(violations).map(violation => {
+    switch (violation.violates.code) {
+      case 'length.unsupported-type':
+        return violation.violates.name
+      case 'length.min':
+        return violation.violates.args[0]
+    }
+  })
+}
+```
+
+For calls like `hasLength({ min: 3 })`, impossible branches such as `'length.max'` or `'length.range'` are no longer carried into the violation union.
+
 ## What The Global Registry Solves
 
 Exact literals on individual values are good for local introspection.

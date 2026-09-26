@@ -179,9 +179,13 @@ Then `describe(isAvailableEmail).code` is typed as `'user.email.taken'`.
 
 This part does not depend on the global union extraction. The literal is preserved directly from the assertion definition.
 
+`KnownViolationSubject<C>` preserves the relationship between each code and its contract even when `C` is a union. Checking `code` narrows `kind`, `name`, and `args` together.
+
 ## Using Augmented Codes In Shape Refinements
 
 The same idea applies to object-level refinement issues.
+
+Shape refinements produce `kind: 'validator'` and `name: 'shape'`, so registered codes must match that origin and name. A registered argument tuple that requires elements makes `args` mandatory. Empty, optional-only, and rest-only tuples can omit `args`. The same checks apply to inferred sync and async callback results, including overloads with rule descriptors. Unregistered and legacy codes keep their generic fallback.
 
 ```typescript
 import type { ShapeRefinementViolationInput } from '@modulify/validator'
@@ -206,7 +210,7 @@ const signUpForm = shape({
     path: ['confirmation', 'password'],
     code: 'profile.password.mismatch',
     args: [],
-  }] satisfies ShapeRefinementViolationInput<'profile.password.mismatch'>
+  }] satisfies ShapeRefinementViolationInput<'profile.password.mismatch'>[]
 })
 ```
 

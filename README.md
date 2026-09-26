@@ -60,34 +60,23 @@ Instead of generating a text message, an assertion returns data that describes:
 
 That keeps presentation outside the library.
 
-### Why This Exists Alongside `zod`-Like Libraries
+### Validation And Reactive Presentation
 
-Libraries such as `zod`, `yup`, and similar schema-oriented tools are well known and solve a large class of validation problems well.
+Schema composition and structured diagnostics are both part of the public API. Validation produces data that an application can retain and interpret using its current locale and UI components.
 
-The goal of this project is different.
+A component can render the same violation as translated text, a link, a button, or a combination of elements. Switching languages updates the presentation without parsing messages, rerunning validation, or repeating remote checks.
 
-It is not primarily trying to be:
+The extensible violation code registry connects each registered code to its origin, constraint name, and argument tuple. This gives application-specific diagnostics a shared typed contract across checks and consumers.
 
-- a schema-definition DSL;
-- a form library with built-in message semantics;
-- an all-in-one parsing and presentation layer.
-
-Instead, this project focuses on:
-
-- small predicates for narrowing;
-- a separate assertion layer for diagnostics;
-- composable schema combinators;
-- machine-readable violations that consumers can map however they want.
-
-A short summary of the intended direction is:
-
-> Type-safe predicates for narrowing, and validators for machine-readable diagnostics.
+> Type-safe validation with structured diagnostics and independent presentation.
 
 Or even shorter:
 
 > No messages, only meaning.
 
 ## Installation
+
+The public type declarations require TypeScript 5.4 or newer.
 
 Using `yarn`:
 
@@ -105,7 +94,6 @@ npm install @modulify/validator --save
 
 ```typescript
 import {
-  each,
   shape,
   exact,
   hasLength,
@@ -136,7 +124,7 @@ const [ok, validated, violations] = await validate({
 }))
 
 if (ok) {
-  validated.form.nickname.toUpperCase()
+  validated.form.nickname?.toUpperCase()
 } else {
   console.log(violations)
 }
@@ -281,11 +269,11 @@ In the current API this usually looks like:
 Sequential assertion arrays are stage-aware. A tuple like `[isString, hasLength({ min: 3 })]` is valid, while incompatible combinations like `[isNumber, hasLength({ min: 3 })]` are rejected by TypeScript.
 Refinement assertions are not meant to be passed to `validate(...)` or `matches.sync(...)` on their own.
 
-`validate(...)` is the default async-first validation entrypoint. `validate.sync(...)` and `matches.sync(...)` are specialized sync APIs and will throw if they encounter async validators or async object-level `shape(...).refine(...)` rules.
+`validate(...)` is the default async-first validation entrypoint. `validate.sync(...)` and `matches.sync(...)` are specialized sync APIs and throw when a validator or object-level rule returns a Promise. Use `shape(...).refine.sync(...)` to declare rules intended for sync validation.
 
 ## Violations
 
-`validate(...)` returns machine-readable `Violation[]`, and `collection(...)` can wrap that list into a small helper API for exact path lookups and tree traversal.
+`validate(...)` infers the violations that the supplied constraints can produce, including their code-specific argument types, and `collection(...)` can wrap that list into a small helper API for exact path lookups and tree traversal.
 
 ### Extending Violation Types
 
@@ -315,7 +303,9 @@ const locked: KnownViolationSubject<'auth.account_locked'> = {
 }
 ```
 
-For a registered code, TypeScript checks `kind`, `name`, and the number and types of arguments. `KnownViolationSubject<'auth.account_locked'>` derives this structure from the registry, so consumers can interpret the arguments without casts or parsing error messages.
+For a registered code, TypeScript checks `kind`, `name`, and the number and types of arguments. A union of registered codes remains discriminated by `code`, preserving the corresponding argument types in each branch. `KnownViolationSubject<'auth.account_locked'>` derives this structure from the registry, so consumers can interpret the arguments without casts or parsing error messages.
+
+Shape refinements always produce `kind: 'validator'` and `name: 'shape'`. Codes used by `.refine(...)` or `.refine.sync(...)` must have a matching registry contract. Required arguments must be supplied; `args` can be omitted when the registered tuple accepts an empty array. These checks also apply to inferred callback results.
 
 This extension adds a defined contract rather than an untyped metadata bag. Unregistered codes and legacy registry entries using `never` remain supported with generic fallback types; register a full `ViolationCodeEntry` when you need strict code-specific typing.
 
@@ -333,7 +323,7 @@ import {
 
 const [ok, validated, violations] = validate.sync({
   profile: {
-    email: '',
+    email: 42,
   },
 }, shape({
   profile: shape({

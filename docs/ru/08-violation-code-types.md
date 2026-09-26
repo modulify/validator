@@ -179,9 +179,13 @@ const isAvailableEmail = assert(
 
 Эта часть не зависит от глобального union. Literal сохраняется прямо из определения assertion.
 
+`KnownViolationSubject<C>` сохраняет связь каждого кода с его контрактом, даже если `C` — union. Проверка `code` сужает связанные `kind`, `name` и `args`.
+
 ## Использование расширенных кодов в shape refinements
 
 Та же идея работает и для object-level refinement issues.
+
+Shape refinements создают `kind: 'validator'` и `name: 'shape'`, поэтому зарегистрированные коды должны соответствовать этому источнику и имени. Если tuple требует элементы, `args` обязателен. Для пустых tuple, tuple только с optional-элементами и rest-only tuple `args` можно опустить. Проверки действуют и для автоматически выведенных результатов sync/async callback, включая перегрузки с rule descriptors. Незарегистрированные и legacy-коды сохраняют generic fallback.
 
 ```typescript
 import type { ShapeRefinementViolationInput } from '@modulify/validator'
@@ -206,7 +210,7 @@ const signUpForm = shape({
     path: ['confirmation', 'password'],
     code: 'profile.password.mismatch',
     args: [],
-  }] satisfies ShapeRefinementViolationInput<'profile.password.mismatch'>
+  }] satisfies ShapeRefinementViolationInput<'profile.password.mismatch'>[]
 })
 ```
 

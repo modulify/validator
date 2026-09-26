@@ -160,12 +160,12 @@ export type ViolationKindOf<C extends string = string> = ViolationEntry<C>['kind
 export type ViolationNameOf<C extends string = string> = ViolationEntry<C>['name']
 
 /** Strict code-driven violation subject for a fully registered violation code. */
-export type KnownViolationSubject<C extends KnownViolationCode> = {
+export type KnownViolationSubject<C extends KnownViolationCode> = C extends KnownViolationCode ? {
   kind: ViolationKindOf<C>;
   name: ViolationNameOf<C>;
   code: C;
   args: ViolationArgs<C>;
-}
+} : never
 
 /** Machine-readable description of a validation failure. */
 export type ViolationSubject<
@@ -616,16 +616,24 @@ export type ShapeRefinementViolationInput<
   COrA extends string | readonly unknown[] = string,
   C extends string = ResolveShapeRefinementViolationCode<COrA>,
   A extends readonly unknown[] = ResolveShapeRefinementViolationArgs<COrA, C>,
-> = {
-  path?: PropertyKey[];
-  code: C;
-  args?: [COrA] extends [readonly unknown[]]
-    ? A
-    : C extends KnownViolationCode
-      ? A & ViolationArgs<C>
-      : A;
-  value?: unknown;
-}
+> = C extends string
+  ? {
+      path?: PropertyKey[];
+      code: C;
+      value?: unknown;
+    } & (C extends KnownViolationCode
+      ? ('validator' extends ViolationKindOf<C>
+          ? ('shape' extends ViolationNameOf<C>
+              ? (readonly [] extends ViolationArgs<C>
+                  ? { args?: A & ViolationArgs<C> }
+                  : { args: A & ViolationArgs<C> })
+              : never)
+          : never)
+      : { args?: A })
+  : never
+
+type CompatibleShapeRefinementInput<I extends ShapeRefinementViolationInput> =
+  I extends ShapeRefinementViolationInput<I['code']> ? I : never
 
 /** Sync-safe object-level rule that runs after the base shape has validated successfully. */
 export type SyncShapeRefinement<
@@ -654,13 +662,13 @@ export interface ShapeRefineMethodSync<
   RI extends ShapeRefinementViolationInput = never,
 > {
   <const I extends ShapeRefinementViolationInput = ShapeRefinementViolationInput>(
-    refinement: SyncShapeRefinement<InferShape<D>, I>
+    refinement: SyncShapeRefinement<InferShape<D>, I> & SyncShapeRefinement<InferShape<D>, CompatibleShapeRefinementInput<NoInfer<I>>>
   ): ObjectShape<D, M, [...R, SyncObjectShapeRuleDescriptor<'refine'>], RI | I>;
   <
     const I extends ShapeRefinementViolationInput = ShapeRefinementViolationInput,
     const RD extends SyncObjectShapeRuleDescriptor<string> = SyncObjectShapeRuleDescriptor<'refine'>
   >(
-    refinement: SyncShapeRefinement<InferShape<D>, I>,
+    refinement: SyncShapeRefinement<InferShape<D>, I> & SyncShapeRefinement<InferShape<D>, CompatibleShapeRefinementInput<NoInfer<I>>>,
     descriptor: RD
   ): ObjectShape<D, M, [...R, RD], RI | I>;
 }
@@ -673,13 +681,13 @@ export interface ShapeRefineMethod<
   RI extends ShapeRefinementViolationInput = never,
 > {
   <const I extends ShapeRefinementViolationInput = ShapeRefinementViolationInput>(
-    refinement: ShapeRefinement<InferShape<D>, I>
+    refinement: ShapeRefinement<InferShape<D>, I> & ShapeRefinement<InferShape<D>, CompatibleShapeRefinementInput<NoInfer<I>>>
   ): ObjectShape<D, M, [...R, AsyncObjectShapeRuleDescriptor<'refine'>], RI | I>;
   <
     const I extends ShapeRefinementViolationInput = ShapeRefinementViolationInput,
     const RD extends SyncObjectShapeRuleDescriptor<string> = SyncObjectShapeRuleDescriptor<'refine'>
   >(
-    refinement: ShapeRefinement<InferShape<D>, I>,
+    refinement: ShapeRefinement<InferShape<D>, I> & ShapeRefinement<InferShape<D>, CompatibleShapeRefinementInput<NoInfer<I>>>,
     descriptor: RD
   ): ObjectShape<D, M, [...R, AsyncObjectShapeRuleDescriptorOf<RD>], RI | I>;
   sync: ShapeRefineMethodSync<D, M, R, RI>;

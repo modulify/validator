@@ -47,11 +47,34 @@ import { toJsonSchema } from '@modulify/validator/json-schema'
 declare module '@modulify/validator' {
   interface ViolationCodeRegistry {
     'consumer.named': ViolationCodeEntry<'assertion', 'consumer', readonly [name: string]>
+    'consumer.locked': ViolationCodeEntry<'validator', 'shape', readonly [retryAt: number]>
+    'consumer.recovery': ViolationCodeEntry<'validator', 'shape', readonly [url: string]>
   }
 }
 const named: KnownViolationSubject<'consumer.named'> = { kind: 'assertion', name: 'consumer', code: 'consumer.named', args: ['value'] }
 // @ts-expect-error registry augmentation preserves the argument type
 const invalidNamed: KnownViolationSubject<'consumer.named'> = { kind: 'assertion', name: 'consumer', code: 'consumer.named', args: [2] }
+
+type AuthIssue = KnownViolationSubject<'consumer.locked' | 'consumer.recovery'>
+// @ts-expect-error union codes retain their own argument tuples
+const mixedAuthIssue: AuthIssue = { kind: 'validator', name: 'shape', code: 'consumer.locked', args: ['/recover'] }
+const auth = shape({ login: isString })
+// @ts-expect-error inferred registered refinement requires arguments
+auth.refine.sync(() => ({ code: 'consumer.locked' }))
+// @ts-expect-error inferred async refinement checks argument types
+auth.refine(async () => ({ code: 'consumer.locked', args: ['later'] }))
+const authResult = validate.sync({ login: '' }, auth.refine.sync(value => value.login
+  ? null
+  : { code: 'consumer.locked', args: [60] }))
+if (!authResult[0]) {
+  for (const issue of authResult[2]) {
+    if (issue.violates.code === 'consumer.locked') {
+      const retryAt: number = issue.violates.args[0]
+      void retryAt
+    }
+  }
+}
+void mixedAuthIssue
 
 const result: ValidationResult<number> = validate.sync(4, [isInteger, multipleOf(2)])
 const safeResult: ValidationResult<number> = validate.sync(4, [isSafeInteger, hasValue({ min: 0 })])

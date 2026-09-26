@@ -15,6 +15,8 @@
 
 Проект сознательно строится вокруг структурированных метаданных, а не вокруг встроенных человекочитаемых сообщений об ошибках.
 
+Типы нарушений расширяются через TypeScript module augmentation. Для каждого зарегистрированного кода задаётся контракт: источник, имя constraint и tuple аргументов. Собственные нарушения приложения сохраняют строгую связь между кодом и данными для его интерпретации.
+
 ## Что это за проект
 
 Эта библиотека рассчитана на случаи, когда вам нужно:
@@ -61,34 +63,23 @@ Assertions — это проверки, которые могут вернуть
 
 Так представление результата остаётся за пределами библиотеки.
 
-### Почему это существует рядом с `zod`-подобными библиотеками
+### Валидация и реактивное представление
 
-Библиотеки вроде `zod`, `yup` и других schema-oriented инструментов хорошо известны и отлично решают большой класс задач.
+Композиция схем и структурированная диагностика входят в публичный API. Результат проверки можно сохранить и интерпретировать с учётом текущей локали и UI-компонентов.
 
-Задача этого проекта в другом.
+Компонент может представить одно нарушение как переведённый текст, ссылку, кнопку или сочетание элементов. Смена языка обновляет представление без парсинга сообщений, повторной валидации и повторных запросов к API.
 
-Он в первую очередь не пытается быть:
+Расширяемый реестр связывает каждый зарегистрированный код с источником нарушения, именем constraint и tuple аргументов. Это общий типизированный контракт для проверок и потребителей их результатов.
 
-- schema-definition DSL;
-- form library со встроенной семантикой сообщений;
-- all-in-one parsing и слой представления.
-
-Вместо этого проект фокусируется на:
-
-- маленьких predicates для narrowing;
-- отдельном слое assertions для diagnostics;
-- composable schema combinators;
-- machine-readable violations, которые потребитель может преобразовывать как угодно.
-
-Короткое описание направления проекта:
-
-> Type-safe predicates for narrowing, and validators for machine-readable diagnostics.
+> Типобезопасная валидация со структурированной диагностикой и независимым представлением.
 
 Или ещё короче:
 
 > No messages, only meaning.
 
 ## Установка
+
+Публичные декларации типов требуют TypeScript 5.4 или новее.
 
 Через `yarn`:
 
@@ -106,7 +97,6 @@ npm install @modulify/validator --save
 
 ```typescript
 import {
-  each,
   shape,
   exact,
   hasLength,
@@ -137,7 +127,7 @@ const [ok, validated, violations] = await validate({
 }))
 
 if (ok) {
-  validated.form.nickname.toUpperCase()
+  validated.form.nickname?.toUpperCase()
 } else {
   console.log(violations)
 }
@@ -282,11 +272,49 @@ const node = describe(registration)
 Последовательные массивы assertions теперь stage-aware. Кортеж вроде `[isString, hasLength({ min: 3 })]` типизируется, а несовместимые комбинации вроде `[isNumber, hasLength({ min: 3 })]` TypeScript отсекает.
 Refinement assertions не предполагаются для одиночной передачи в `validate(...)` или `matches.sync(...)`.
 
-`validate(...)` — основной async-first entrypoint. `validate.sync(...)` и `matches.sync(...)` остаются специализированными sync API и выбрасывают ошибку, если встречают async validators или async object-level rules из `shape(...).refine(...)`.
+`validate(...)` — основной async-first entrypoint. `validate.sync(...)` и `matches.sync(...)` остаются специализированными sync API и выбрасывают ошибку, если validator или object-level rule возвращает Promise. Для правил, рассчитанных на sync-валидацию, используйте `shape(...).refine.sync(...)`.
 
 ## Нарушения
 
-`validate(...)` возвращает машиночитаемый список `Violation[]`, а `collection(...)` может обернуть его в небольшой helper API для точного поиска по path и обхода дерева.
+`validate(...)` выводит типы нарушений из переданных constraints, включая связанные с кодом типы аргументов, а `collection(...)` может обернуть его в небольшой helper API для точного поиска по path и обхода дерева.
+
+### Расширение типов нарушений
+
+Расширьте `ViolationCodeRegistry`, чтобы задать точный контракт кода приложения:
+
+```typescript
+import type {
+  KnownViolationSubject,
+  ViolationCodeEntry,
+} from '@modulify/validator'
+
+declare module '@modulify/validator' {
+  interface ViolationCodeRegistry {
+    'auth.account_locked': ViolationCodeEntry<
+      'validator',
+      'auth',
+      readonly [retryAt: number, recoveryUrl: string]
+    >;
+  }
+}
+
+const locked: KnownViolationSubject<'auth.account_locked'> = {
+  kind: 'validator',
+  name: 'auth',
+  code: 'auth.account_locked',
+  args: [Date.now() + 60_000, '/recover'],
+}
+```
+
+Для зарегистрированного кода TypeScript проверяет `kind`, `name`, количество и типы аргументов. Union кодов сохраняет связь между `code` и аргументами при сужении типа. `KnownViolationSubject<'auth.account_locked'>` получает структуру из реестра; потребители могут интерпретировать данные без приведений типов и парсинга сообщений.
+
+Shape refinements всегда создают `kind: 'validator'` и `name: 'shape'`. Реестр используемых ими кодов должен соответствовать этому контракту. Обязательные аргументы нужно передать; `args` можно опустить, если зарегистрированный tuple допускает пустой массив. Проверки действуют и для результатов callback, типы которых выводятся автоматически.
+
+Незарегистрированные коды и legacy-записи с `never` сохраняют generic fallback. Для строгой типизации конкретного кода зарегистрируйте полный `ViolationCodeEntry`.
+
+Сохранённые нарушения можно отображать с текущей локалью и UI-компонентами. Изменение представления обновляет текст, ссылки и интерактивные элементы без повторной валидации и удалённых проверок.
+
+### Поиск нарушений
 
 ```typescript
 import {
@@ -298,7 +326,7 @@ import {
 
 const [ok, validated, violations] = validate.sync({
   profile: {
-    email: '',
+    email: 42,
   },
 }, shape({
   profile: shape({

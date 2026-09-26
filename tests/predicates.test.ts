@@ -322,7 +322,30 @@ describe('isShape', () => {
 
     expect(shape({ id: 1, name: 'Alice' })).toBe(true)
     expect(shape({ id: 1 })).toBe(true)
+    expect(shape({ id: 1, name: 2 })).toBe(false)
     expect(shape({ name: 'Alice' })).toBe(false)
+  })
+
+  test('validates present undefined values through the field predicate', () => {
+    const stringShape = isShape({ name: [isString, false] })
+    const optionalUndefinedShape = isShape({ name: [Or(isString, isUndefined), false] })
+    const requiredUndefinedShape = isShape({ name: [isUndefined, true] })
+    const shorthandUndefinedShape = isShape({ name: isUndefined })
+
+    expect(stringShape({ name: undefined })).toBe(false)
+    expect(optionalUndefinedShape({})).toBe(true)
+    expect(optionalUndefinedShape({ name: undefined })).toBe(true)
+    expect(requiredUndefinedShape({})).toBe(false)
+    expect(requiredUndefinedShape({ name: undefined })).toBe(true)
+    expect(shorthandUndefinedShape({})).toBe(false)
+    expect(shorthandUndefinedShape({ name: undefined })).toBe(true)
+  })
+
+  test('validates inherited optional properties when they are present', () => {
+    const shape = isShape({ name: [isString, false] })
+
+    expect(shape(Object.create({ name: 'Alice' }))).toBe(true)
+    expect(shape(Object.create({ name: 2 }))).toBe(false)
   })
 })
 

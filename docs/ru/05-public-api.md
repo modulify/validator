@@ -105,6 +105,12 @@ Predicates доступны из:
 
 Используйте этот subpath, когда нужны guard-style runtime checks без более высокого validation layer.
 
+В `isShape({ name: [isString, false] })` optional-поле может отсутствовать,
+но присутствующее значение всегда проверяется предикатом. Это относится и к
+явному `undefined`: чтобы разрешить его, используйте `Or(isString, isUndefined)`.
+Shorthand `name: isString` и кортеж `[isString, true]` задают обязательное поле.
+Наличие поля проверяется через `in`, включая свойства из цепочки прототипов.
+
 ## Subpath экспорта JSON Schema
 
 JSON Schema export доступен из:

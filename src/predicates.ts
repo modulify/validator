@@ -142,18 +142,25 @@ export type Shape<T extends object> = {
   [K in keyof T]: [Predicate<T[K]>, boolean] | Predicate<T[K]>
 }
 
-// Without `any` inference does not work properly
-// eslint-disable-next-line
-type ExtractType<T extends Shape<any>> = {
-  [K in keyof T]: T[K] extends [Predicate<infer U>, true]
+type ShapePropertyType<Config> = Config extends Predicate<infer U>
+  ? U
+  : Config extends [Predicate<infer U>, boolean]
     ? U
-    : T[K] extends [Predicate<infer U>, false]
-      ? U | undefined
-      : never;
-} extends infer O
-  ? O
-  : never
+    : never
 
+type OptionalShapeKeys<T> = {
+  [K in keyof T]: T[K] extends [Predicate, infer Required]
+    ? false extends Required ? K : never
+    : never;
+}[keyof T]
+
+type ExtractType<T> = {
+  [K in Exclude<keyof T, OptionalShapeKeys<T>>]: ShapePropertyType<T[K]>;
+} & {
+  [K in OptionalShapeKeys<T>]?: ShapePropertyType<T[K]>;
+}
+
+/** Checks present fields with their predicates; optional fields may be absent. */
 // Without `any` inference does not work properly
 // eslint-disable-next-line
 export const isShape = <S extends Shape<any>>(shape: S) => {
@@ -163,9 +170,10 @@ export const isShape = <S extends Shape<any>>(shape: S) => {
     const config = shape[p as keyof S] as [Predicate, boolean] | Predicate
     const [predicate, required] = isArray(config) ? config : [config, true]
 
-    return p in value
-      && value[p as keyof object] !== undefined
-      && predicate(value[p as keyof object])
-      || !required
+    if (!(p in value)) {
+      return !required
+    }
+
+    return predicate(value[p as keyof object])
   })
 }

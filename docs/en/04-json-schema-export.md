@@ -69,6 +69,9 @@ Supported practical mappings include:
 
 - `isString` -> `type: 'string'`
 - `isNumber` -> `type: 'number'`
+- `isFiniteNumber` -> `type: 'number'`
+- `isInteger` -> `type: 'integer'`
+- `isSafeInteger` -> `type: 'integer'`, `minimum: Number.MIN_SAFE_INTEGER`, `maximum: Number.MAX_SAFE_INTEGER`
 - `isBoolean` -> `type: 'boolean'`
 - `isNull` -> `type: 'null'`
 - `isEmail` -> `type: 'string'` plus `format: 'email'`
@@ -201,6 +204,8 @@ Important examples:
 - values that are not representable as practical JSON Schema constants or enums.
 
 The exporter keeps these boundaries explicit instead of guessing.
+
+`isValidDate`, `isError`, `isRegExp`, and `isPromiseLike` describe runtime values without a faithful JSON Schema representation. Strict mode throws `JsonSchemaExportError`; best-effort mode emits an unconstrained node. JSON numeric values are finite, so `isFiniteNumber` needs no additional schema keyword.
 
 ## Relationship To `describe(...)`
 

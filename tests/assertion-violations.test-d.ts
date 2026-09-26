@@ -9,12 +9,15 @@ import {
   hasLength,
   hasSize,
   hasValue,
+  isInteger,
   isNumber,
+  isValidDate,
   isSet,
   isString,
   multipleOf,
   validate,
 } from '@/index'
+import { describe as describeConstraint } from '@/index'
 
 describe('parameterized assertion violation types', () => {
   test('hasLength({ min: 3 }) keeps only supported violation codes', () => {
@@ -111,6 +114,21 @@ describe('parameterized assertion violation types', () => {
             return violation.violates
         }
       })
+    }
+  })
+
+  test('standalone integer and valid-date assertions preserve dedicated descriptor codes', () => {
+    const integerDescriptor = describeConstraint(isInteger)
+    const validDateDescriptor = describeConstraint(isValidDate)
+
+    if (integerDescriptor.kind === 'assertion') {
+      assertType<'number.integer'>(integerDescriptor.code)
+      assertType<readonly []>(integerDescriptor.args)
+    }
+
+    if (validDateDescriptor.kind === 'assertion') {
+      assertType<'date.valid'>(validDateDescriptor.code)
+      assertType<readonly []>(validDateDescriptor.args)
     }
   })
 })

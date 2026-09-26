@@ -11,11 +11,18 @@ import {
   hasValue,
   isBigInt,
   isBlob,
+  isError,
+  isFiniteNumber,
   isFile,
   isFunction,
+  isInteger,
   isMap,
   isNaN,
+  isPromiseLike,
+  isRegExp,
+  isSafeInteger,
   isSet,
+  isValidDate,
   multipleOf,
   oneOf,
   endsWith,
@@ -236,6 +243,26 @@ describe('primitive assertions', () => {
     })
   })
 
+  test('isError', () => {
+    const value = new TypeError('boom')
+
+    expect(isError.check(value)).toBe(true)
+    expect(isError(value)).toBe(null)
+    expect(isError({ message: 'boom' })).toEqual({
+      value: { message: 'boom' },
+      violates: assertionSubject('isError', 'type.error'),
+    })
+  })
+
+  test('isFiniteNumber', () => {
+    expect(isFiniteNumber.check(1)).toBe(true)
+    expect(isFiniteNumber(1)).toBe(null)
+    expect(isFiniteNumber(Infinity)).toEqual({
+      value: Infinity,
+      violates: assertionSubject('isFiniteNumber', 'number.finite'),
+    })
+  })
+
   test('isFile', () => {
     const value = new File(['payload'], 'test.txt')
     const invalid = new Blob(['payload'])
@@ -259,6 +286,15 @@ describe('primitive assertions', () => {
     })
   })
 
+  test('isInteger', () => {
+    expect(isInteger.check(1)).toBe(true)
+    expect(isInteger(1)).toBe(null)
+    expect(isInteger(1.5)).toEqual({
+      value: 1.5,
+      violates: assertionSubject('isInteger', 'number.integer'),
+    })
+  })
+
   test('isMap', () => {
     const value = new Map([['key', 1]])
 
@@ -279,6 +315,37 @@ describe('primitive assertions', () => {
     })
   })
 
+  test('isPromiseLike', () => {
+    const value = Promise.resolve(1)
+
+    expect(isPromiseLike.check(value)).toBe(true)
+    expect(isPromiseLike(value)).toBe(null)
+    expect(isPromiseLike({})).toEqual({
+      value: {},
+      violates: assertionSubject('isPromiseLike', 'type.promise-like'),
+    })
+  })
+
+  test('isRegExp', () => {
+    const value = /abc/
+
+    expect(isRegExp.check(value)).toBe(true)
+    expect(isRegExp(value)).toBe(null)
+    expect(isRegExp('abc')).toEqual({
+      value: 'abc',
+      violates: assertionSubject('isRegExp', 'type.regexp'),
+    })
+  })
+
+  test('isSafeInteger', () => {
+    expect(isSafeInteger.check(1)).toBe(true)
+    expect(isSafeInteger(1)).toBe(null)
+    expect(isSafeInteger(Number.MAX_SAFE_INTEGER + 1)).toEqual({
+      value: Number.MAX_SAFE_INTEGER + 1,
+      violates: assertionSubject('isSafeInteger', 'number.safe-integer'),
+    })
+  })
+
   test('isSet', () => {
     const value = new Set([1, 2, 3])
 
@@ -287,6 +354,18 @@ describe('primitive assertions', () => {
     expect(isSet([1, 2, 3])).toEqual({
       value: [1, 2, 3],
       violates: assertionSubject('isSet', 'type.set'),
+    })
+  })
+
+  test('isValidDate', () => {
+    const value = new Date('2023-01-01')
+    const invalid = new Date('invalid')
+
+    expect(isValidDate.check(value)).toBe(true)
+    expect(isValidDate(value)).toBe(null)
+    expect(isValidDate(invalid)).toEqual({
+      value: invalid,
+      violates: assertionSubject('isValidDate', 'date.valid'),
     })
   })
 })

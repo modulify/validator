@@ -11,6 +11,7 @@ export default mergeConfig(basic, defineConfig({
       '**/*.{test,spec}.?(c|m)[jt]s?(x)',
     ],
     coverage: {
+      enabled: true,
       provider: 'v8',
       include: ['src/**'],
       reporter: [

@@ -90,9 +90,7 @@
     "release:major": "conventional-release --tags --release-as major",
     "stats": "gzip -c ./dist/index.mjs | wc -c",
     "test": "vitest run",
-    "test:d": "vitest run --typecheck.only",
-    "test:coverage": "vitest run --coverage",
-    "test:coverage:html": "vitest run --coverage --reporter=html --outputFile.html=./reports/html/report.html",
+    "test:d": "vitest run --typecheck.only --coverage.enabled=false",
     "test:package": "yarn build && node scripts/check-package.mjs",
     "typecheck": "tsc --noEmit"
   },

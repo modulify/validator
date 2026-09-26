@@ -62,7 +62,7 @@ jobs:
         run: yarn typecheck
 
       - name: Run tests
-        run: yarn test:coverage
+        run: yarn test
 
       - name: Run type tests
         run: yarn test:d

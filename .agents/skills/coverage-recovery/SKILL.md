@@ -28,7 +28,7 @@ Use this skill when the user asks to:
 ## Workflow
 1. Collect facts:
 ```bash
-yarn test:coverage
+yarn test
 ```
 2. Read uncovered details, not only percentages.
 Use:
@@ -48,7 +48,7 @@ Use:
 ```bash
 yarn lint
 yarn typecheck
-yarn test:coverage
+yarn test
 ```
 
 ## Controlled Failure Patterns

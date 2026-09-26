@@ -32,11 +32,6 @@ test: node_modules ## Runs autotests
 	$(TARGET_HEADER)
 	$(YARN) test
 
-.PHONY: test-coverage
-test-coverage: node_modules ## Runs autotests with --coverage
-	$(TARGET_HEADER)
-	$(YARN) test:coverage
-
 .PHONY: release
 release: ## Bumps version and creates tag
 	$(TARGET_HEADER)

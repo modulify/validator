@@ -50,13 +50,9 @@ yarn lint
 ```bash
 yarn typecheck
 ```
-- Test:
+- Test (coverage is enabled by default; reports are written to `coverage/`):
 ```bash
 yarn test
-```
-- Coverage:
-```bash
-yarn test:coverage
 ```
 - Build:
 ```bash

@@ -12,6 +12,8 @@
 
 The project is intentionally centered on structured metadata instead of built-in human-readable error messages.
 
+Violation types are extensible through TypeScript module augmentation. Each registered code defines a contract for its origin, constraint name, and argument tuple, so applications can add their own violations while preserving the relationship between a code and the data required to interpret it.
+
 ## What This Project Is
 
 This library is designed for cases where you want to:
@@ -284,6 +286,42 @@ Refinement assertions are not meant to be passed to `validate(...)` or `matches.
 ## Violations
 
 `validate(...)` returns machine-readable `Violation[]`, and `collection(...)` can wrap that list into a small helper API for exact path lookups and tree traversal.
+
+### Extending Violation Types
+
+Extend `ViolationCodeRegistry` to give an application-specific code a precise contract:
+
+```typescript
+import type {
+  KnownViolationSubject,
+  ViolationCodeEntry,
+} from '@modulify/validator'
+
+declare module '@modulify/validator' {
+  interface ViolationCodeRegistry {
+    'auth.account_locked': ViolationCodeEntry<
+      'validator',
+      'auth',
+      readonly [retryAt: number, recoveryUrl: string]
+    >;
+  }
+}
+
+const locked: KnownViolationSubject<'auth.account_locked'> = {
+  kind: 'validator',
+  name: 'auth',
+  code: 'auth.account_locked',
+  args: [Date.now() + 60_000, '/recover'],
+}
+```
+
+For a registered code, TypeScript checks `kind`, `name`, and the number and types of arguments. `KnownViolationSubject<'auth.account_locked'>` derives this structure from the registry, so consumers can interpret the arguments without casts or parsing error messages.
+
+This extension adds a defined contract rather than an untyped metadata bag. Unregistered codes and legacy registry entries using `never` remain supported with generic fallback types; register a full `ViolationCodeEntry` when you need strict code-specific typing.
+
+Store the violations once and render them using the current locale and UI components. Changing their presentation can then update text, links, and other interactive elements without rerunning validation or repeating remote checks.
+
+### Looking Up Violations
 
 ```typescript
 import {

@@ -6,8 +6,8 @@ export default defineConfig({
 
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
-      '~types': resolve(__dirname, './types/'),
+      '@': resolve(import.meta.dirname, './src'),
+      '~types': resolve(import.meta.dirname, './types/'),
     },
   },
 })

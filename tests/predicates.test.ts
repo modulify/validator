@@ -503,17 +503,17 @@ describe('isUndefined', () => {
 
 describe('And', () => {
   test('returns true when a value satisfies all of the predicates', () => {
-    expect(And(isNumber, (value: number): value is number => isFinite(value))(1)).toBe(true)
+    expect(And(isNumber, (value: unknown): value is number => isNumber(value) && isFinite(value))(1)).toBe(true)
     expect(And(
       isString,
-      (value: string): value is string => value.length > 3,
-      (value: string): value is string => value.length < 10
+      (value: unknown): value is string => isString(value) && value.length > 3,
+      (value: unknown): value is string => isString(value) && value.length < 10
     )('NickName')).toBe(true)
   })
 
   test('returns false when a value does not satisfy at least one of the predicates', () => {
-    expect(And(isNumber, (value: number): value is number => value > 10)(5)).toBe(false)
-    expect(And(isString, (value: string): value is string => value.length > 0)('')).toBe(false)
+    expect(And(isNumber, (value: unknown): value is number => isNumber(value) && value > 10)(5)).toBe(false)
+    expect(And(isString, (value: unknown): value is string => isString(value) && value.length > 0)('')).toBe(false)
   })
 })
 

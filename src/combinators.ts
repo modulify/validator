@@ -570,7 +570,7 @@ export const discriminatedUnion = <
       return false
     }
 
-    const discriminator = value[key]
+    const discriminator = value[key] as PropertyKey
 
     return Object.prototype.hasOwnProperty.call(variants, discriminator)
       && matchesConstraints(value, variants[discriminator as keyof T] as CompatibleConstraints<T[keyof T]>)
@@ -588,7 +588,7 @@ export const discriminatedUnion = <
       }]] as Validation<F>[]
     }
 
-    const discriminator = value[key]
+    const discriminator = value[key] as PropertyKey
 
     if (!Object.prototype.hasOwnProperty.call(variants, discriminator)) {
       return [[{
@@ -644,7 +644,7 @@ export const record = <const C extends MaybeMany<Constraint>>(constraints: Compa
 }))
 
 export const shape = <const D extends ShapeDescriptor>(descriptor: CompatibleShapeDescriptor<D>): ObjectShape<D, 'passthrough', [], never> => {
-  return /* @__PURE__ */ createObjectShape(descriptor, 'passthrough', [], [])
+  return /* @__PURE__ */ createObjectShape<D, 'passthrough', [], never>(descriptor, 'passthrough', [], [])
 }
 
 export const exact = <const T>(value: T) => /* @__PURE__ */ assert(isExact(value), {

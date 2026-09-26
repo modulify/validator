@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "strict": true,
     "esModuleInterop": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -15,6 +16,8 @@
     "src/**/*.ts",
     "src/shims-*.d.ts",
     "tests/**/*.ts",
+    "vite.config*.ts",
+    "vitest.config.ts",
     "rollup.config.ts"
   ]
 }

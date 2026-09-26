@@ -2,6 +2,7 @@ import type { AssertionConstraint } from '~types'
 
 import {
   assert,
+  createRefinement,
   refine,
 } from './assert'
 
@@ -240,7 +241,7 @@ export const hasLength = <const O extends BoundedAssertionOptions = EmptyOptions
   const { bail = false } = options
   const constraints = buildLengthConstraints(options)
 
-  return /* @__PURE__ */ refine(
+  return /* @__PURE__ */ createRefinement(
     {
       name: 'hasLength',
       bail,
@@ -256,7 +257,7 @@ export const hasSize = <const O extends BoundedAssertionOptions = EmptyOptions>(
   const { bail = false } = options
   const constraints = buildSizeConstraints(options)
 
-  return /* @__PURE__ */ refine(
+  return /* @__PURE__ */ createRefinement(
     {
       name: 'hasSize',
       bail,
@@ -273,7 +274,7 @@ export const hasPattern = (
   }: {
     bail?: boolean;
   } = {}
-) => /* @__PURE__ */ refine(
+) => /* @__PURE__ */ createRefinement(
   {
     name: 'hasPattern',
     bail,
@@ -294,7 +295,7 @@ export const startsWith = (
   }: {
     bail?: boolean;
   } = {}
-) => /* @__PURE__ */ refine(
+) => /* @__PURE__ */ createRefinement(
   {
     name: 'startsWith',
     bail,
@@ -315,7 +316,7 @@ export const endsWith = (
   }: {
     bail?: boolean;
   } = {}
-) => /* @__PURE__ */ refine(
+) => /* @__PURE__ */ createRefinement(
   {
     name: 'endsWith',
     bail,
@@ -335,7 +336,7 @@ export const hasValue = <const O extends BoundedAssertionOptions = EmptyOptions>
   const { bail = false } = options
   const constraints = buildValueConstraints(options)
 
-  return /* @__PURE__ */ refine(
+  return /* @__PURE__ */ createRefinement(
     {
       name: 'hasValue',
       bail,
@@ -352,7 +353,7 @@ export const multipleOf = <const Step extends number>(
   }: {
     bail?: boolean;
   } = {}
-) => /* @__PURE__ */ refine(
+) => /* @__PURE__ */ createRefinement(
   {
     name: 'multipleOf',
     bail,

@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.3.1
+
 ## 0.3.0
 
 ### ⚠ BREAKING CHANGE* **types:** Public type names were simplified

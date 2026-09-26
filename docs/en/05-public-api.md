@@ -105,6 +105,12 @@ This subpath contains reusable runtime/type-guard helpers and predicate combinat
 
 Use this subpath when you want guard-style runtime checks without pulling in the higher-level validation layer.
 
+In `isShape({ name: [isString, false] })`, an optional field may be absent,
+but a present value is always checked by its predicate. This includes explicit
+`undefined`: use `Or(isString, isUndefined)` to allow it.
+The shorthand `name: isString` and the tuple `[isString, true]` define required fields.
+Field presence is checked with `in`, including properties in the prototype chain.
+
 ## JSON Schema Export Subpath
 
 JSON Schema export is available from:

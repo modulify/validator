@@ -64,6 +64,9 @@ jobs:
       - name: Run type tests
         run: yarn test:d
 
+      - name: Check packed package consumers
+        run: yarn test:package
+
       - name: Upload coverage to GitHub Artifacts
         uses: actions/upload-artifact@v4
         with:

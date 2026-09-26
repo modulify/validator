@@ -6,33 +6,58 @@
   "version": "0.2.1",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs",
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
       "default": "./dist/index.mjs"
     },
     "./assertions": {
-      "types": "./dist/assertions.d.ts",
-      "import": "./dist/assertions.mjs",
-      "require": "./dist/assertions.cjs",
+      "import": {
+        "types": "./dist/assertions.d.mts",
+        "default": "./dist/assertions.mjs"
+      },
+      "require": {
+        "types": "./dist/assertions.d.cts",
+        "default": "./dist/assertions.cjs"
+      },
       "default": "./dist/assertions.mjs"
     },
     "./combinators": {
-      "types": "./dist/combinators.d.ts",
-      "import": "./dist/combinators.mjs",
-      "require": "./dist/combinators.cjs",
+      "import": {
+        "types": "./dist/combinators.d.mts",
+        "default": "./dist/combinators.mjs"
+      },
+      "require": {
+        "types": "./dist/combinators.d.cts",
+        "default": "./dist/combinators.cjs"
+      },
       "default": "./dist/combinators.mjs"
     },
     "./json-schema": {
-      "types": "./dist/json-schema.d.ts",
-      "import": "./dist/json-schema.mjs",
-      "require": "./dist/json-schema.cjs",
+      "import": {
+        "types": "./dist/json-schema.d.mts",
+        "default": "./dist/json-schema.mjs"
+      },
+      "require": {
+        "types": "./dist/json-schema.d.cts",
+        "default": "./dist/json-schema.cjs"
+      },
       "default": "./dist/json-schema.mjs"
     },
     "./predicates": {
-      "types": "./dist/predicates.d.ts",
-      "import": "./dist/predicates.mjs",
-      "require": "./dist/predicates.cjs",
+      "import": {
+        "types": "./dist/predicates.d.mts",
+        "default": "./dist/predicates.mjs"
+      },
+      "require": {
+        "types": "./dist/predicates.d.cts",
+        "default": "./dist/predicates.cjs"
+      },
       "default": "./dist/predicates.mjs"
     }
   },
@@ -56,7 +81,7 @@
   },
   "scripts": {
     "build": "vite build",
-    "lint": "eslint src tests types",
+    "lint": "eslint src tests types scripts vite.config.ts",
     "prepare": "husky",
     "release": "npx --yes standard-version",
     "release:minor": "npx --yes standard-version --release-as minor",
@@ -67,6 +92,7 @@
     "test:d": "vitest run --typecheck.only",
     "test:coverage": "vitest run --coverage",
     "test:coverage:html": "vitest run --coverage --reporter=html --outputFile.html=./reports/html/report.html",
+    "test:package": "yarn build && node scripts/check-package.mjs",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

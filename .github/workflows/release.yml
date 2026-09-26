@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       release:
-        description: "Release type"
+        description: Release type
         required: true
-        default: "auto"
+        default: auto
         type: choice
         options:
           - auto
@@ -14,9 +14,9 @@ on:
           - minor
           - major
       prerelease:
-        description: "Prerelease channel"
+        description: Prerelease channel
         required: true
-        default: "none"
+        default: none
         type: choice
         options:
           - none
@@ -24,43 +24,69 @@ on:
           - beta
           - rc
       npm_tag:
-        description: "npm dist-tag for publication"
+        description: npm dist-tag (auto selects latest or the prerelease channel)
         required: true
-        default: "latest"
+        default: auto
         type: string
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release
   cancel-in-progress: false
 
 jobs:
   release:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      npm_tag: ${{ steps.validate.outputs.npm_tag }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Validate release branch and npm tag
+        id: validate
         env:
           NPM_TAG: ${{ inputs.npm_tag }}
+          PRERELEASE: ${{ inputs.prerelease }}
         run: |
-          if [ "$NPM_TAG" = "latest" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
-            echo "Release to npm tag 'latest' must be started from the main branch."
+          if [ "$GITHUB_REF_TYPE" != branch ]; then
+            echo "Release must run from a branch."
             exit 1
           fi
+          if [ "$PRERELEASE" = none ] && [ "$GITHUB_REF_NAME" != main ]; then
+            echo "Stable releases must run from main."
+            exit 1
+          fi
+          if [ "$NPM_TAG" = auto ]; then
+            if [ "$PRERELEASE" = none ]; then
+              NPM_TAG=latest
+            else
+              NPM_TAG="$PRERELEASE"
+            fi
+          fi
+          if [[ ! "$NPM_TAG" =~ ^[a-z][a-z0-9._-]*$ ]]; then
+            echo "Invalid npm dist-tag: $NPM_TAG"
+            exit 1
+          fi
+          if [ "$PRERELEASE" != none ] && [ "$NPM_TAG" = latest ]; then
+            echo "Prereleases cannot be published to latest."
+            exit 1
+          fi
+          echo "npm_tag=$NPM_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js and dependencies
         uses: ./.github/actions/setup-node-deps
         with:
           node-version: 24.x
-          registry-url: https://registry.npmjs.org
 
       - name: Configure git user
         run: |
@@ -75,44 +101,102 @@ jobs:
           yarn test:d
           yarn test:package
 
-      - name: Run release script
+      - name: Create release commit and tag
+        id: version
         env:
           RELEASE_TYPE: ${{ inputs.release }}
           PRERELEASE: ${{ inputs.prerelease }}
+          YARN_ENABLE_IMMUTABLE_INSTALLS: 'false'
         run: |
-          case "$RELEASE_TYPE" in
-            auto)
-              RELEASE_SCRIPT="release"
-              ;;
-            patch)
-              RELEASE_SCRIPT="release:patch"
-              ;;
-            minor)
-              RELEASE_SCRIPT="release:minor"
-              ;;
-            major)
-              RELEASE_SCRIPT="release:major"
-              ;;
-            *)
-              echo "Unknown release type: $RELEASE_TYPE"
-              exit 1
-              ;;
-          esac
-
-          CMD=(yarn run "$RELEASE_SCRIPT")
-          if [ "$PRERELEASE" != "none" ]; then
+          PREVIOUS_VERSION=$(node -p "require('./package.json').version")
+          CMD=(yarn release)
+          if [ "$RELEASE_TYPE" != auto ]; then
+            CMD+=(--release-as "$RELEASE_TYPE")
+          fi
+          if [ "$PRERELEASE" != none ]; then
             CMD+=(--prerelease "$PRERELEASE")
           fi
-
           "${CMD[@]}"
 
-      - name: Build package
-        run: yarn build
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "$VERSION" = "$PREVIOUS_VERSION" ]; then
+            echo "No new release was created."
+            exit 1
+          fi
+          TAG="v$VERSION"
+          test "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$(git rev-parse HEAD)"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Push release commit and tags
-        run: git push origin "HEAD:${GITHUB_REF_NAME}" --follow-tags
+      - name: Push release commit and tag
+        run: git push --atomic origin "HEAD:$GITHUB_REF_NAME" "refs/tags/${{ steps.version.outputs.tag }}"
 
-      - name: Publish to npm
+  publish:
+    needs: release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ needs.release.outputs.tag }}
+          persist-credentials: false
+
+      - name: Setup Node.js and dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: 24.x
+          registry-url: https://registry.npmjs.org
+
+      - name: Verify npm supports trusted publishing
+        run: |
+          node -e "const [major, minor, patch] = process.argv[1].split('.').map(Number); if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1)))) process.exit(1)" "$(npm --version)"
+
+      - name: Check released package
+        run: |
+          yarn lint
+          yarn typecheck
+          yarn test
+          yarn test:d
+          yarn test:package
+
+      - name: Check published version
+        id: published
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          npm view "$NAME" versions --json > "$RUNNER_TEMP/published-versions.json"
+          PUBLISHED=$(node -e "const fs = require('node:fs'); const versions = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); console.log([].concat(versions).includes(process.argv[2]))" "$RUNNER_TEMP/published-versions.json" "$VERSION")
+          echo "published=$PUBLISHED" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to npm with trusted publishing
+        if: steps.published.outputs.published == 'false'
         env:
-          NPM_TAG: ${{ inputs.npm_tag }}
-        run: npm publish --access public --tag "$NPM_TAG"
+          NPM_TAG: ${{ needs.release.outputs.npm_tag }}
+        run: |
+          unset NODE_AUTH_TOKEN NPM_TOKEN
+          npm publish --access public --tag "$NPM_TAG"
+
+  github-release:
+    needs: [release, publish]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release.outputs.tag }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            exit 0
+          fi
+          CMD=(gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes --title "$TAG")
+          if [ "$PRERELEASE" != none ]; then
+            CMD+=(--prerelease --latest=false)
+          fi
+          "${CMD[@]}"

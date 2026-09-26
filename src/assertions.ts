@@ -26,15 +26,22 @@ import {
   isBlob as _isBlob,
   isDate as _isDate,
   isEmail as _isEmail,
+  isError as _isError,
+  isFiniteNumber as _isFiniteNumber,
   isFile as _isFile,
   isFunction as _isFunction,
+  isInteger as _isInteger,
   isMap as _isMap,
   isNaN as _isNaN,
   isNull as _isNull,
   isNumber as _isNumber,
+  isPromiseLike as _isPromiseLike,
+  isRegExp as _isRegExp,
+  isSafeInteger as _isSafeInteger,
   isSet as _isSet,
   isString as _isString,
   isSymbol as _isSymbol,
+  isValidDate as _isValidDate,
 } from '@/predicates'
 
 export {
@@ -194,15 +201,38 @@ export const isDefined = /* @__PURE__ */ assert((value: unknown): value is Defin
   code: 'value.defined',
 })
 export const isEmail = /* @__PURE__ */ assert(_isEmail, { name: 'isEmail', bail: true, code: 'string.email' })
+export const isError = /* @__PURE__ */ assert(_isError, { name: 'isError', bail: true, code: 'type.error' })
+export const isFiniteNumber = /* @__PURE__ */ assert(_isFiniteNumber, {
+  name: 'isFiniteNumber',
+  bail: true,
+  code: 'number.finite',
+})
 export const isFile = /* @__PURE__ */ assert(_isFile, { name: 'isFile', bail: true, code: 'type.file' })
 export const isFunction = /* @__PURE__ */ assert(_isFunction, { name: 'isFunction', bail: true, code: 'type.function' })
+export const isInteger = /* @__PURE__ */ assert(_isInteger, { name: 'isInteger', bail: true, code: 'number.integer' })
 export const isMap = /* @__PURE__ */ assert(_isMap, { name: 'isMap', bail: true, code: 'type.map' })
 export const isNaN = /* @__PURE__ */ assert(_isNaN, { name: 'isNaN', bail: true, code: 'number.nan' })
 export const isNull = /* @__PURE__ */ assert(_isNull, { name: 'isNull', bail: true, code: 'type.null' })
 export const isNumber = /* @__PURE__ */ assert(_isNumber, { name: 'isNumber', bail: true, code: 'type.number' })
+export const isPromiseLike = /* @__PURE__ */ assert(_isPromiseLike, {
+  name: 'isPromiseLike',
+  bail: true,
+  code: 'type.promise-like',
+})
+export const isRegExp = /* @__PURE__ */ assert(_isRegExp, { name: 'isRegExp', bail: true, code: 'type.regexp' })
+export const isSafeInteger = /* @__PURE__ */ assert(_isSafeInteger, {
+  name: 'isSafeInteger',
+  bail: true,
+  code: 'number.safe-integer',
+})
 export const isSet = /* @__PURE__ */ assert(_isSet, { name: 'isSet', bail: true, code: 'type.set' })
 export const isString = /* @__PURE__ */ assert(_isString, { name: 'isString', bail: true, code: 'type.string' })
 export const isSymbol = /* @__PURE__ */ assert(_isSymbol, { name: 'isSymbol', bail: true, code: 'type.symbol' })
+export const isValidDate = /* @__PURE__ */ assert(_isValidDate, {
+  name: 'isValidDate',
+  bail: true,
+  code: 'date.valid',
+})
 
 export const hasLength = <const O extends BoundedAssertionOptions = EmptyOptions>(
   options: O = {} as O

@@ -66,17 +66,21 @@ type ResolveViolationSubjectArgs<COrT extends string | readonly unknown[], C ext
  * `declare module '@modulify/validator' { interface ViolationCodeRegistry { 'legacy.code': never } }`
  */
 export interface ViolationCodeRegistry {
+  'date.valid': ViolationCodeEntry<'assertion', 'isValidDate', readonly []>;
   'length.exact': ViolationCodeEntry<'assertion', 'hasLength', readonly [exact: number]>;
   'length.max': ViolationCodeEntry<'assertion', 'hasLength', readonly [max: number]>;
   'length.min': ViolationCodeEntry<'assertion', 'hasLength', readonly [min: number]>;
   'length.range': ViolationCodeEntry<'assertion', 'hasLength', readonly [range: readonly [number, number]]>;
   'length.unsupported-type': ViolationCodeEntry<'assertion', 'hasLength', readonly []>;
   'number.exact': ViolationCodeEntry<'assertion', 'hasValue', readonly [exact: number]>;
+  'number.finite': ViolationCodeEntry<'assertion', 'isFiniteNumber', readonly []>;
+  'number.integer': ViolationCodeEntry<'assertion', 'isInteger', readonly []>;
   'number.max': ViolationCodeEntry<'assertion', 'hasValue', readonly [max: number]>;
   'number.min': ViolationCodeEntry<'assertion', 'hasValue', readonly [min: number]>;
   'number.multiple-of': ViolationCodeEntry<'assertion', 'multipleOf', readonly [step: number]>;
   'number.nan': ViolationCodeEntry<'assertion', 'isNaN', readonly []>;
   'number.range': ViolationCodeEntry<'assertion', 'hasValue', readonly [range: readonly [number, number]]>;
+  'number.safe-integer': ViolationCodeEntry<'assertion', 'isSafeInteger', readonly []>;
   'number.unsupported-type': ViolationCodeEntry<'assertion', 'hasValue' | 'multipleOf', readonly []>;
   'runtime.rejection': ViolationCodeEntry<'runtime', 'validate', readonly [reason: unknown]>;
   'shape.fields.mismatch': ViolationCodeEntry<
@@ -105,12 +109,15 @@ export interface ViolationCodeRegistry {
   'type.blob': ViolationCodeEntry<'assertion', 'isBlob', readonly []>;
   'type.boolean': ViolationCodeEntry<'assertion', 'isBoolean', readonly []>;
   'type.date': ViolationCodeEntry<'assertion', 'isDate', readonly []>;
+  'type.error': ViolationCodeEntry<'assertion', 'isError', readonly []>;
   'type.file': ViolationCodeEntry<'assertion', 'isFile', readonly []>;
   'type.function': ViolationCodeEntry<'assertion', 'isFunction', readonly []>;
   'type.map': ViolationCodeEntry<'assertion', 'isMap', readonly []>;
   'type.null': ViolationCodeEntry<'assertion', 'isNull', readonly []>;
   'type.number': ViolationCodeEntry<'assertion', 'isNumber', readonly []>;
+  'type.promise-like': ViolationCodeEntry<'assertion', 'isPromiseLike', readonly []>;
   'type.record': ViolationCodeEntry<'validator', 'shape' | 'discriminatedUnion' | 'record', readonly []>;
+  'type.regexp': ViolationCodeEntry<'assertion', 'isRegExp', readonly []>;
   'type.set': ViolationCodeEntry<'assertion', 'isSet', readonly []>;
   'type.string': ViolationCodeEntry<'assertion', 'isString', readonly []>;
   'type.symbol': ViolationCodeEntry<'assertion', 'isSymbol', readonly []>;

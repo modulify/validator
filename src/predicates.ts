@@ -35,6 +35,11 @@ export function isDate (value: unknown): value is Date {
   return value instanceof Date
 }
 
+/** Checks if value is a valid Date */
+export function isValidDate (value: unknown): value is Date {
+  return isDate(value) && !Number.isNaN(value.getTime())
+}
+
 /** Checks if a value is an email */
 export function isEmail (value: unknown): value is string {
   const pattern = /^(([^<>()[\].,;:\s@"]+(\.[^<>()[\].,;:\s@"]+)*)|(".+"))@(([^<>()[\].,;:\s@"]+\.)+[^<>()[\].,;:\s@"]{2,})$/i
@@ -50,6 +55,11 @@ export function isExact <T = unknown>(exact: T){
 /** Checks if a value is a File */
 export function isFile (value: unknown): value is File {
   return typeof File !== 'undefined' && value instanceof File
+}
+
+/** Checks if a value is an Error */
+export function isError (value: unknown): value is Error {
+  return value instanceof Error
 }
 
 /** Checks if a value is a function */
@@ -79,14 +89,41 @@ export function isNumber (value: unknown): value is number {
   return typeof value === 'number' && !isNaN(value)
 }
 
+/** Checks if a value is a finite number */
+export function isFiniteNumber (value: unknown): value is number {
+  return isNumber(value) && Number.isFinite(value)
+}
+
+/** Checks if a value is an integer */
+export function isInteger (value: unknown): value is number {
+  return isNumber(value) && Number.isInteger(value)
+}
+
 /** Checks if a value is an object, excluding null value */
 export function isObject (value: unknown): value is object {
   return typeof value === 'object' && value !== null
 }
 
+/** Checks if a value is promise-like */
+export function isPromiseLike<T = unknown>(value: unknown): value is PromiseLike<T> {
+  return (isObject(value) || isFunction(value))
+    && 'then' in value
+    && isFunction((value as PromiseLike<T> & { then: unknown }).then)
+}
+
+/** Checks if a value is a regular expression */
+export function isRegExp (value: unknown): value is RegExp {
+  return value instanceof RegExp
+}
+
 /** Check if a value is a record like Record<PropertyKey, unknown> */
 export function isRecord (value: unknown): value is Record<PropertyKey, unknown> {
   return isObject(value) && !isNull(value) && constructorOf(value) === Object && Object.keys(prototypeOf(value)).length === 0
+}
+
+/** Checks if a value is a safe integer */
+export function isSafeInteger (value: unknown): value is number {
+  return isNumber(value) && Number.isSafeInteger(value)
 }
 
 /** Checks if a value is a Set */

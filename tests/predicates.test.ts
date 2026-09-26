@@ -8,20 +8,27 @@ import {
   isBlob,
   isDate,
   isEmail,
+  isError,
   isExact,
+  isFiniteNumber,
   isFile,
   isFunction,
+  isInteger,
   isMap,
   isNaN,
   isNull,
   isNumber,
   isObject,
+  isPromiseLike,
+  isRegExp,
   isRecord,
+  isSafeInteger,
   isSet,
   isShape,
   isString,
   isSymbol,
   isUndefined,
+  isValidDate,
   And,
   Or,
   Not,
@@ -110,6 +117,7 @@ describe('isDate', () => {
   test('returns true when a value is a valid Date object', () => {
     expect(isDate(new Date())).toBe(true)
     expect(isDate(new Date('2023-01-01'))).toBe(true)
+    expect(isDate(new Date('invalid'))).toBe(true)
   })
 
   test('returns false when a value is not a valid Date object', () => {
@@ -119,6 +127,19 @@ describe('isDate', () => {
     expect(isDate(null)).toBe(false)
     expect(isDate(undefined)).toBe(false)
     expect(isDate(Symbol('date'))).toBe(false)
+  })
+})
+
+describe('isValidDate', () => {
+  test('returns true when a value is a valid Date object', () => {
+    expect(isValidDate(new Date())).toBe(true)
+    expect(isValidDate(new Date('2023-01-01'))).toBe(true)
+  })
+
+  test('returns false when a value is not a valid Date object', () => {
+    expect(isValidDate(new Date('invalid'))).toBe(false)
+    expect(isValidDate('2023-01-01')).toBe(false)
+    expect(isValidDate(null)).toBe(false)
   })
 })
 
@@ -136,6 +157,19 @@ describe('isEmail', () => {
     expect(isEmail(2)).toBe(false)
     expect(isEmail(Symbol('2'))).toBe(false)
     expect(isEmail('not-email')).toBe(false)
+  })
+})
+
+describe('isError', () => {
+  test('returns true when a value is an Error', () => {
+    expect(isError(new Error('boom'))).toBe(true)
+    expect(isError(new TypeError('boom'))).toBe(true)
+  })
+
+  test('returns false when a value is not an Error', () => {
+    expect(isError({ message: 'boom' })).toBe(false)
+    expect(isError('boom')).toBe(false)
+    expect(isError(null)).toBe(false)
   })
 })
 
@@ -231,12 +265,43 @@ describe('isNumber', () => {
   test('returns true when a value\'s type is a number', () => {
     expect(isNumber(1)).toBe(true)
     expect(isNumber(1.5)).toBe(true)
+    expect(isNumber(Infinity)).toBe(true)
   })
 
   test('returns false when a value\'s type is not a number', () => {
     expect(isNumber({})).toBe(false)
     expect(isNumber('1')).toBe(false)
     expect(isNumber('1.5')).toBe(false)
+  })
+})
+
+describe('isFiniteNumber', () => {
+  test('returns true when a value is a finite number', () => {
+    expect(isFiniteNumber(1)).toBe(true)
+    expect(isFiniteNumber(1.5)).toBe(true)
+    expect(isFiniteNumber(-42)).toBe(true)
+  })
+
+  test('returns false when a value is not a finite number', () => {
+    expect(isFiniteNumber(Number.NaN)).toBe(false)
+    expect(isFiniteNumber(Infinity)).toBe(false)
+    expect(isFiniteNumber(-Infinity)).toBe(false)
+    expect(isFiniteNumber('1')).toBe(false)
+  })
+})
+
+describe('isInteger', () => {
+  test('returns true when a value is an integer', () => {
+    expect(isInteger(0)).toBe(true)
+    expect(isInteger(42)).toBe(true)
+    expect(isInteger(-42)).toBe(true)
+  })
+
+  test('returns false when a value is not an integer', () => {
+    expect(isInteger(1.5)).toBe(false)
+    expect(isInteger(Number.NaN)).toBe(false)
+    expect(isInteger(Infinity)).toBe(false)
+    expect(isInteger('42')).toBe(false)
   })
 })
 
@@ -262,6 +327,34 @@ describe('isObject', () => {
   })
 })
 
+describe('isPromiseLike', () => {
+  test('returns true when a value is promise-like', () => {
+    expect(isPromiseLike(Promise.resolve(1))).toBe(true)
+    expect(isPromiseLike({ then: () => undefined })).toBe(true)
+    expect(isPromiseLike(Object.assign(() => undefined, { then: () => undefined }))).toBe(true)
+  })
+
+  test('returns false when a value is not promise-like', () => {
+    expect(isPromiseLike({})).toBe(false)
+    expect(isPromiseLike({ then: true })).toBe(false)
+    expect(isPromiseLike(null)).toBe(false)
+    expect(isPromiseLike('promise')).toBe(false)
+  })
+})
+
+describe('isRegExp', () => {
+  test('returns true when a value is a regular expression', () => {
+    expect(isRegExp(/abc/)).toBe(true)
+    expect(isRegExp(new RegExp('abc'))).toBe(true)
+  })
+
+  test('returns false when a value is not a regular expression', () => {
+    expect(isRegExp('abc')).toBe(false)
+    expect(isRegExp({})).toBe(false)
+    expect(isRegExp(null)).toBe(false)
+  })
+})
+
 describe('isRecord', () => {
   const a = Symbol('property')
   const b = Symbol('property')
@@ -280,6 +373,21 @@ describe('isRecord', () => {
     class A {}
 
     expect(isRecord(new A())).toBe(false)
+  })
+})
+
+describe('isSafeInteger', () => {
+  test('returns true when a value is a safe integer', () => {
+    expect(isSafeInteger(0)).toBe(true)
+    expect(isSafeInteger(Number.MAX_SAFE_INTEGER)).toBe(true)
+    expect(isSafeInteger(Number.MIN_SAFE_INTEGER)).toBe(true)
+  })
+
+  test('returns false when a value is not a safe integer', () => {
+    expect(isSafeInteger(1.5)).toBe(false)
+    expect(isSafeInteger(Number.MAX_SAFE_INTEGER + 1)).toBe(false)
+    expect(isSafeInteger(Infinity)).toBe(false)
+    expect(isSafeInteger('42')).toBe(false)
   })
 })
 

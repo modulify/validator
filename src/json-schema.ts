@@ -371,6 +371,20 @@ const numberSchema = (
 ): JsonSchema => {
   const schema: MutableJsonSchema = { type: 'number' }
 
+  if (descriptor.name === 'isInteger') {
+    setSchemaProperty(schema, 'type', 'integer')
+
+    return schema
+  }
+
+  if (descriptor.name === 'isSafeInteger') {
+    setSchemaProperty(schema, 'type', 'integer')
+    setSchemaProperty(schema, 'minimum', Number.MIN_SAFE_INTEGER)
+    setSchemaProperty(schema, 'maximum', Number.MAX_SAFE_INTEGER)
+
+    return schema
+  }
+
   if (descriptor.name === 'multipleOf') {
     const [step] = descriptor.constraints[0]?.args ?? []
 
@@ -514,6 +528,13 @@ const exportAssertion = (
     case 'isNumber':
       return { type: 'number' }
 
+    case 'isFiniteNumber':
+      return { type: 'number' }
+
+    case 'isInteger':
+    case 'isSafeInteger':
+      return numberSchema(descriptor, context)
+
     case 'isBoolean':
       return { type: 'boolean' }
 
@@ -570,6 +591,18 @@ const exportAssertion = (
 
     case 'isDate':
       return unsupported(descriptor, context, 'Date instances do not have a stable JSON Schema representation')
+
+    case 'isValidDate':
+      return unsupported(descriptor, context, 'Date instances do not have a stable JSON Schema representation')
+
+    case 'isError':
+      return unsupported(descriptor, context, 'Error instances do not have a stable JSON Schema representation')
+
+    case 'isPromiseLike':
+      return unsupported(descriptor, context, 'promise-like values do not have a stable JSON Schema representation')
+
+    case 'isRegExp':
+      return unsupported(descriptor, context, 'regular expressions do not have a stable JSON Schema representation')
 
     case 'isSet':
       return unsupported(descriptor, context, 'Set instances do not have a stable JSON Schema representation')

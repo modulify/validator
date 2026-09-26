@@ -15,9 +15,10 @@ import {
 export const isValidator = <T = unknown>(constraint: Constraint<T>): constraint is Validator<T> => 'run' in constraint
 
 export function arrayify<T>(value: MaybeMany<T>): T[] {
+  // Array.isArray does not exclude readonly arrays from the scalar branch.
   return Array.isArray(value)
     ? [...value]
-    : [value]
+    : [value as T]
 }
 
 export function matchesConstraints<C extends MaybeMany<Constraint>>(

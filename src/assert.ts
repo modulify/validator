@@ -222,6 +222,8 @@ export const createRefinement = <
   },
   constraints: C = [] as unknown as C
 ): Refinement<ConstraintInput<C>, C, ResolveAssertionCode<Name, Code>, ResolveAssertionArgs<Args>, Name> => {
+  // Only refinement constraints inspect values; this predicate preserves the input type.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   return createAssertion('refinement', ((value: unknown): value is ConstraintInput<C> => true), meta, constraints) as Refinement<
     ConstraintInput<C>,
     C,

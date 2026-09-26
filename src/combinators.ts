@@ -221,7 +221,7 @@ const getPathValue = (value: unknown, path: readonly PropertyKey[]) => path.redu
   return Reflect.get(Object(current), key)
 }, value)
 
-const toPath = (selector: ShapeFieldSelector): PropertyKey[] => Array.isArray(selector)
+const toPath = (selector: ShapeFieldSelector): PropertyKey[] => typeof selector === 'object'
   ? [...selector]
   : [selector]
 

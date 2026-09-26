@@ -3,7 +3,7 @@ import {
   mergeConfig,
 } from 'vite'
 
-import dts from 'vite-plugin-dts'
+import dts from 'unplugin-dts/vite'
 
 import {
   join,
@@ -16,13 +16,13 @@ import {
   writeFile,
 } from 'node:fs/promises'
 
-import { name } from './package.json'
+import packageJson from './package.json' with { type: 'json' }
 
-import basic from './vite.config.basic'
+import basic from './vite.config.basic.ts'
 
 const writeModuleDeclarations = async () => {
-  const outputDirectory = resolve(__dirname, 'dist')
-  await cp(resolve(__dirname, 'types'), join(outputDirectory, 'types'), { recursive: true })
+  const outputDirectory = resolve(import.meta.dirname, 'dist')
+  await cp(resolve(import.meta.dirname, 'types'), join(outputDirectory, 'types'), { recursive: true })
   const files = (await readdir(outputDirectory, { recursive: true })).filter(file => file.endsWith('.d.ts'))
 
   for (const file of files) {
@@ -48,15 +48,15 @@ const writeModuleDeclarations = async () => {
 export default mergeConfig(basic, defineConfig({
   build: {
     lib: {
-      name,
+      name: packageJson.name,
       entry: {
-        assert: resolve(__dirname, './src/assert.ts'),
-        assertions: resolve(__dirname, './src/assertions.ts'),
-        combinators: resolve(__dirname, './src/combinators.ts'),
-        'json-schema': resolve(__dirname, './src/json-schema.ts'),
-        metadata: resolve(__dirname, './src/metadata.ts'),
-        predicates: resolve(__dirname, './src/predicates.ts'),
-        index: resolve(__dirname, './src/index.ts'),
+        assert: resolve(import.meta.dirname, './src/assert.ts'),
+        assertions: resolve(import.meta.dirname, './src/assertions.ts'),
+        combinators: resolve(import.meta.dirname, './src/combinators.ts'),
+        'json-schema': resolve(import.meta.dirname, './src/json-schema.ts'),
+        metadata: resolve(import.meta.dirname, './src/metadata.ts'),
+        predicates: resolve(import.meta.dirname, './src/predicates.ts'),
+        index: resolve(import.meta.dirname, './src/index.ts'),
       },
       fileName: (format, entryName) => `${entryName}.${{
         cjs: 'cjs',
@@ -64,11 +64,11 @@ export default mergeConfig(basic, defineConfig({
       }[format as 'es' | 'cjs']}`,
     },
     minify: false,
-    rollupOptions: {
+    rolldownOptions: {
       output: (['es', 'cjs'] as const).map(format => ({
         format,
         exports: 'named',
-        dir: resolve(__dirname, 'dist'),
+        dir: resolve(import.meta.dirname, 'dist'),
         chunkFileNames: `[name]-[hash].${format === 'es' ? 'mjs' : 'cjs'}`,
       })),
     },

@@ -77,6 +77,7 @@ const createAsyncAssertion = (
     },
     check: {
       enumerable: true,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       value: (_value: unknown): _value is unknown => true,
     },
   })

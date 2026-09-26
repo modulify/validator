@@ -3,7 +3,7 @@ import {
   mergeConfig,
 } from 'vitest/config'
 
-import basic from './vite.config.basic'
+import basic from './vite.config.basic.ts'
 
 export default mergeConfig(basic, defineConfig({
   test: {

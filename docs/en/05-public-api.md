@@ -48,6 +48,24 @@ This is the main runtime-facing API surface of the library.
 Sequential assertion arrays are stage-aware: a compatible tuple such as `[isString, hasLength({ min: 3 })]` is supported directly, while incompatible combinations are rejected by the type system.
 Refinement assertions are staged helpers, so `validate(...)` and `matches.sync(...)` expect them to appear after a compatible guard instead of being passed on their own.
 
+Structural validators such as `each(...)` reset the assertion stage. Use a new compatible guard before subsequent refinements, for example `[each(isString), isDefined, hasLength({ min: 2 })]`.
+
+### Built-in value guards
+
+These checks are available as assertions from the root and `./assertions`, and as boolean type guards from `./predicates`.
+
+| Check | Accepted values | Violation code |
+| --- | --- | --- |
+| `isFiniteNumber` | Numbers excluding `NaN` and infinities | `number.finite` |
+| `isInteger` | Integer numbers | `number.integer` |
+| `isSafeInteger` | Integers within JavaScript's safe integer bounds | `number.safe-integer` |
+| `isValidDate` | `Date` instances with a valid timestamp | `date.valid` |
+| `isError` | `Error` instances, including subclasses | `type.error` |
+| `isRegExp` | `RegExp` instances | `type.regexp` |
+| `isPromiseLike` | Objects or functions with a callable `then` property | `type.promise-like` |
+
+`isNumber` still accepts infinities; `isDate` still accepts invalid `Date` instances. Use the stricter checks when those values must be rejected. `isPromiseLike` checks the presence of a callable `then`, without executing it or inspecting the resolved value.
+
 ## Metadata And Introspection
 
 The same root package also includes:

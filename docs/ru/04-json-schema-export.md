@@ -69,6 +69,9 @@ Exporter покрывает built-in descriptor set, который уже уч�
 
 - `isString` -> `type: 'string'`
 - `isNumber` -> `type: 'number'`
+- `isFiniteNumber` -> `type: 'number'`
+- `isInteger` -> `type: 'integer'`
+- `isSafeInteger` -> `type: 'integer'`, `minimum: Number.MIN_SAFE_INTEGER`, `maximum: Number.MAX_SAFE_INTEGER`
 - `isBoolean` -> `type: 'boolean'`
 - `isNull` -> `type: 'null'`
 - `isEmail` -> `type: 'string'` и `format: 'email'`
@@ -201,6 +204,8 @@ Strict режим полезен, когда silent fallback был бы вво�
 - значения, которые нельзя практично представить как JSON Schema constants или enums.
 
 Exporter фиксирует эти границы явно и не пытается гадать.
+
+`isValidDate`, `isError`, `isRegExp` и `isPromiseLike` описывают runtime-значения без точного представления в JSON Schema. Strict mode бросает `JsonSchemaExportError`, а best-effort mode выдаёт узел без ограничений. Числа JSON конечны, поэтому для `isFiniteNumber` дополнительный schema keyword не нужен.
 
 ## Связь с `describe(...)`
 

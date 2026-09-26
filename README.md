@@ -360,6 +360,8 @@ Two additional guides are useful when you want faster practical navigation inste
 - [Common Recipes](./docs/en/06-common-recipes.md) - task-oriented examples for payload validation, wrapper choice, reusable shapes, form error mapping, and JSON Schema export.
 - [AI Reference](./docs/en/07-ai-reference.md) - compact contract summary for agents, tooling, and quick semantic lookup.
 
+- [Migration From 0.2.1](./docs/en/09-migration.md)
+
 ## Notes
 
 - Assertions return structured metadata instead of messages.

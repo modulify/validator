@@ -48,6 +48,24 @@ Root package включает:
 Последовательные массивы assertions теперь stage-aware: совместимый кортеж вроде `[isString, hasLength({ min: 3 })]` поддерживается напрямую, а несовместимые комбинации отсекаются типовой системой.
 Refinement assertions в этой модели являются staged-helper'ами, поэтому `validate(...)` и `matches.sync(...)` ожидают их после совместимого guard-а, а не в одиночку.
 
+Структурные validators вроде `each(...)` сбрасывают assertion stage. Перед следующим refinement нужен новый совместимый guard, например `[each(isString), isDefined, hasLength({ min: 2 })]`.
+
+### Встроенные проверки значений
+
+Эти проверки доступны как assertions из root и `./assertions`, а как boolean type guards — из `./predicates`.
+
+| Проверка | Допустимые значения | Код нарушения |
+| --- | --- | --- |
+| `isFiniteNumber` | Числа без `NaN` и бесконечностей | `number.finite` |
+| `isInteger` | Целые числа | `number.integer` |
+| `isSafeInteger` | Целые числа в безопасном диапазоне JavaScript | `number.safe-integer` |
+| `isValidDate` | Экземпляры `Date` с корректным timestamp | `date.valid` |
+| `isError` | Экземпляры `Error`, включая подклассы | `type.error` |
+| `isRegExp` | Экземпляры `RegExp` | `type.regexp` |
+| `isPromiseLike` | Объекты или функции с вызываемым свойством `then` | `type.promise-like` |
+
+`isNumber` по-прежнему принимает бесконечности, а `isDate` — невалидные экземпляры `Date`. Для их отклонения используйте более строгие проверки. `isPromiseLike` проверяет наличие вызываемого `then`, не вызывая его и не проверяя тип результата.
+
 ## Метаданные и интроспекция
 
 Тот же root package также включает:

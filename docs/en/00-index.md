@@ -9,6 +9,8 @@
 - [AI Reference](./07-ai-reference.md) - Compact contract summary for AI agents, tooling, and quick lookup of stable library semantics.
 - [Violation Code Types](./08-violation-code-types.md) - Detailed guide to `ViolationCodeRegistry`, `ViolationCode`, literal code preservation in descriptors, and external registry augmentation.
 
+- [Migration From 0.2.1](./09-migration.md) - Breaking changes, renamed types, and updated validation contracts.
+
 ## Translations
 
 - [Russian](../ru/00-index.md)

@@ -124,7 +124,7 @@ describe('oneOf', () => {
       { value: 1 },
       { value: 2 },
       { value: 3 },
-    ], { equalTo: (a, b) => typeof b === 'object' && 'value' in b && a.value === b.value }).check
+    ], { equalTo: (a, b) => typeof b === 'object' && b !== null && 'value' in b && a.value === b.value }).check
 
     expect(isCorrect({ value: 1 })).toBe(true)
     expect(isCorrect({ value: 2 })).toBe(true)

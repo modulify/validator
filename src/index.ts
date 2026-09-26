@@ -237,7 +237,7 @@ async function settle (value: unknown, path: PropertyKey[], validations: Promise
 }
 
 export const matches = {
-  sync<const C extends MaybeMany<Constraint>>(value: unknown, constraints: CompatibleConstraints<C>): value is InferConstraints<C> {
+  sync<const C extends MaybeMany<Constraint>>(value: unknown, constraints: C & CompatibleConstraints<C>): value is InferConstraints<C> {
     return collectViolationsSync(value, constraints as CompatibleConstraints<MaybeMany<Constraint>>).length === 0
   },
 }
@@ -245,7 +245,7 @@ export const matches = {
 export const validate = /* @__PURE__ */ Object.assign(
   async <const C extends MaybeMany<Constraint>>(
     value: unknown,
-    constraints: CompatibleConstraints<C>
+    constraints: C & CompatibleConstraints<C>
   ): Promise<ValidationResult<InferConstraints<C>, InferViolations<C>>> => {
     const violations = await collectViolations(value, constraints as CompatibleConstraints<MaybeMany<Constraint>>)
 
@@ -257,7 +257,7 @@ export const validate = /* @__PURE__ */ Object.assign(
   {
     sync<const C extends MaybeMany<Constraint>>(
       value: unknown,
-      constraints: CompatibleConstraints<C>
+      constraints: C & CompatibleConstraints<C>
     ): ValidationResult<InferConstraints<C>, InferViolations<C>> {
       const violations = collectViolationsSync(value, constraints as CompatibleConstraints<MaybeMany<Constraint>>)
 

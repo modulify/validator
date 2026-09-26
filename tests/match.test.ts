@@ -6,6 +6,7 @@ import {
 
 import {
   hasLength,
+  each,
   isDefined,
   isString,
   matches,
@@ -41,5 +42,12 @@ describe('matches.sync', () => {
   test('uses staged refinement checks after a compatible guard succeeds', () => {
     expect(matchesConstraints('neo', [isString, hasLength({ min: 2 })])).toBe(true)
     expect(matchesConstraints('n', [isString, hasLength({ min: 2 })])).toBe(false)
+  })
+
+  test('requires a new guard after a structural validator in dynamic sequences', () => {
+    const constraints = [each(isString), hasLength({ min: 2 })]
+
+    expect(matchesConstraints(['a', 'b'], constraints as never)).toBe(false)
+    expect(matchesConstraints(['a', 'b'], [each(isString), isDefined, hasLength({ min: 2 })])).toBe(true)
   })
 })

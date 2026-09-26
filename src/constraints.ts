@@ -28,13 +28,9 @@ export function matchesConstraints<C extends MaybeMany<Constraint>>(
 
   return arrayify(constraints).every(constraint => {
     if (isValidator(constraint)) {
-      const matched = constraint.check(value)
+      establishedDomain = false
 
-      if (matched) {
-        establishedDomain = true
-      }
-
-      return matched
+      return constraint.check(value)
     }
 
     if (!establishedDomain && isRefinementAssertion(constraint)) {

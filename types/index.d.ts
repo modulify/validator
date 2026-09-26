@@ -386,9 +386,13 @@ export type ConstraintDescriptor = BuiltInConstraintDescriptor | CustomConstrain
  * `type LengthConstraint = AssertionConstraint<string, number, [min: number], 'length.min'>`
  */
 export type AssertionConstraint<
-  T = unknown,
-  V = unknown,
-  A extends readonly unknown[] = readonly unknown[],
+  // Defaults erase heterogeneous checker signatures; concrete tuples retain their types.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  T = any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  V = any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  A extends readonly unknown[] = any[],
   C extends string = string
 > = readonly [
   Extractor<T, V>,
@@ -399,13 +403,13 @@ export type AssertionConstraint<
 
 /** Maps an assertion checker tuple into its public descriptor entry. */
 export type DescribeAssertionConstraint<C extends AssertionConstraint> =
-  C extends AssertionConstraint<unknown, unknown, infer A, infer Code>
+  C extends readonly [unknown, unknown, infer Code extends string, ...infer A]
     ? AssertionConstraintDescriptor<Code, A>
     : never
 
 /** Maps an assertion checker tuple into the violation subject it can produce. */
 export type AssertionConstraintSubject<C extends AssertionConstraint, N extends string = string> =
-  C extends AssertionConstraint<unknown, unknown, infer A, infer Code>
+  C extends readonly [unknown, unknown, infer Code extends string, ...infer A]
     ? {
         kind: 'assertion';
         name: N;
@@ -497,9 +501,11 @@ type ApplyConstraintStep<
         ? ConstraintSequenceState<State['value'], true>
         : never
       : never
-    : Step extends Constraint<infer Output>
-      ? ConstraintSequenceState<State['value'] & Output, true>
-      : never
+    : Step extends Validator<infer Output>
+      ? ConstraintSequenceState<State['value'] & Output, false>
+      : Step extends Assertion<infer Output>
+        ? ConstraintSequenceState<State['value'] & Output, true>
+        : never
 
 type CompatibleConstraintTupleState<
   T extends readonly Constraint[],
@@ -543,6 +549,11 @@ export type InferConstraint<C> =
       ? T
       : never
 
+type InferConstraintIntersection<C> =
+  (C extends unknown ? (value: InferConstraint<C>) => void : never) extends (value: infer Output) => void
+    ? Output
+    : never
+
 /**
  * Extracts the validated TypeScript type from one or many constraints.
  *
@@ -558,7 +569,9 @@ export type InferConstraints<C> =
   C extends readonly []
     ? unknown
     : C extends readonly unknown[]
-      ? UnionToIntersection<InferConstraint<C[number]>>
+      ? number extends C['length']
+        ? InferConstraintIntersection<C[number]>
+        : Intersect<{ [K in keyof C]: InferConstraint<C[K]> }>
       : InferConstraint<C>
 
 /** Internal async runner signature used by composed validators. */

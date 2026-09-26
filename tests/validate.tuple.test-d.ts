@@ -19,6 +19,7 @@ import {
   shape,
   isDefined,
   isString,
+  matches,
   validate,
 } from '@/index'
 
@@ -143,6 +144,16 @@ describe('validate tuple types', () => {
     assertType<ValidationResult<string>>(result)
   })
 
+  test('intersects stages without flattening unions inside a guard domain', () => {
+    const constraints = [isDefined, isString]
+    const result = validate.sync('abc', constraints)
+
+    if (result[0]) {
+      result[1].toUpperCase()
+      assertType<string>(result[1])
+    }
+  })
+
   test('rejects incompatible clarifying assertions in tuples', () => {
     // @ts-expect-error incompatible clarifying assertion
     validate.sync(12, [isNumber, hasLength({ min: 3 })] as const)
@@ -156,5 +167,21 @@ describe('validate tuple types', () => {
   test('rejects standalone clarifying assertions in validation APIs', () => {
     // @ts-expect-error clarifying assertions are not standalone validation constraints
     validate.sync('abc', hasLength({ min: 3 }))
+  })
+
+  test('requires a new guard after a structural validator', () => {
+    const constraints = [each(isString), hasLength({ min: 2 })] as const
+
+    // @ts-expect-error validators do not establish an assertion domain
+    validate.sync(['a', 'b'], constraints)
+    // @ts-expect-error validators do not establish an assertion domain
+    validate(['a', 'b'], constraints)
+    // @ts-expect-error validators do not establish an assertion domain
+    matches.sync(['a', 'b'], constraints)
+    // @ts-expect-error nested fields obey the same stage rules
+    shape({ tags: constraints })
+
+    const result = validate.sync(['a', 'b'], [each(isString), isDefined, hasLength({ min: 2 })])
+    assertType<ValidationResult<string[]>>(result)
   })
 })

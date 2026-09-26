@@ -21,9 +21,23 @@ type AssertMeta = {
 type ResolveAssertionCode<Name extends string, Code extends string | undefined> = Code extends string ? Code : Name
 
 type ResolveAssertionArgs<Args extends readonly unknown[] | undefined> = Args extends readonly unknown[] ? Args : []
-type ConstraintInput<C extends readonly AssertionConstraint[]> = C[number] extends AssertionConstraint<infer Input, unknown, readonly unknown[], string>
-  ? Input
+type ConstraintInputFunction<C extends AssertionConstraint> = C extends unknown
+  ? (value: Parameters<C[0]>[0]) => void
   : never
+
+type ConstraintInput<C extends readonly AssertionConstraint[]> = C extends readonly []
+  ? unknown
+  : ConstraintInputFunction<C[number]> extends (value: infer Input) => void
+    ? Input
+    : never
+
+type ConstraintArgs<C extends AssertionConstraint> = C extends readonly [unknown, unknown, string, ...infer Args]
+  ? Args
+  : never
+
+type CompatibleAssertionConstraints<Input, C extends readonly AssertionConstraint[]> = {
+  [K in keyof C]: AssertionConstraint<Input, ReturnType<C[K][0]>, ConstraintArgs<C[K]>, C[K][2]>;
+}
 
 type RuntimeAssertion = Assertion & {
   [assertionStageSymbol]?: AssertionStage;
@@ -42,7 +56,8 @@ const createAssertion = <
   const Bail extends boolean,
   const Code extends string | undefined = undefined,
   const Args extends readonly unknown[] | undefined = undefined,
-  const C extends readonly AssertionConstraint<T, unknown, readonly unknown[], string>[] = [],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const C extends readonly AssertionConstraint<T, any, any[], string>[] = [],
 >(
   stage: Stage,
   predicate: Predicate<T>,
@@ -155,7 +170,8 @@ export const assert = <
   const Bail extends boolean,
   const Code extends string | undefined = undefined,
   const Args extends readonly unknown[] | undefined = undefined,
-  const C extends readonly AssertionConstraint<T, unknown, readonly unknown[], string>[] = [],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const C extends readonly AssertionConstraint<T, any, any[], string>[] = [],
 >(
   predicate: Predicate<T>,
   meta: AssertMeta & {
@@ -164,7 +180,7 @@ export const assert = <
     code?: Code;
     args?: Args;
   },
-  constraints: C = [] as unknown as C
+  constraints: C & CompatibleAssertionConstraints<T, C> = [] as unknown as C & CompatibleAssertionConstraints<T, C>
 ): Guard<T, C, ResolveAssertionCode<Name, Code>, ResolveAssertionArgs<Args>, Name> => {
   return createAssertion('guard', predicate, meta, constraints) as Guard<
     T,
@@ -191,7 +207,7 @@ export const checkRefinementAssertion = (constraint: Assertion, value: unknown):
   return checkRefinement ? checkRefinement(value) : constraint.check(value)
 }
 
-export const refine = <
+export const createRefinement = <
   const Name extends string,
   const Bail extends boolean,
   const Code extends string | undefined = undefined,
@@ -214,3 +230,19 @@ export const refine = <
     Name
   >
 }
+
+export const refine: <
+  const Name extends string,
+  const Bail extends boolean,
+  const Code extends string | undefined = undefined,
+  const Args extends readonly unknown[] | undefined = undefined,
+  const C extends readonly AssertionConstraint[] = [],
+>(
+  meta: AssertMeta & {
+    name: Name;
+    bail: Bail;
+    code?: Code;
+    args?: Args;
+  },
+  constraints?: C & CompatibleAssertionConstraints<ConstraintInput<C>, C>
+) => Refinement<ConstraintInput<C>, C, ResolveAssertionCode<Name, Code>, ResolveAssertionArgs<Args>, Name> = createRefinement

@@ -226,13 +226,15 @@ describe('validate', () => {
   })
 
   test('awaits async assertions with bail and stops further checks on failure', async () => {
-    expect(await validate('', [
+    const constraints: Assertion[] = [
       createAsyncAssertion('asyncBail', async (value: unknown) => ({
         value,
         violates: assertionSubject('asyncBail', 'asyncBail'),
       }), true),
       hasLength({ min: 2 }),
-    ])).toEqual(invalid('', [{
+    ]
+
+    expect(await validate('', constraints)).toEqual(invalid('', [{
       value: '',
       path: [],
       violates: assertionSubject('asyncBail', 'asyncBail'),

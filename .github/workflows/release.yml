@@ -72,6 +72,8 @@ jobs:
           yarn lint
           yarn typecheck
           yarn test
+          yarn test:d
+          yarn test:package
 
       - name: Run release script
         env:

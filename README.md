@@ -374,3 +374,5 @@ Two additional guides are useful when you want faster practical navigation inste
 ## Translations
 
 - [Russian](./docs/ru/README.md)
+
+Release workflow and npm OIDC setup: [Releasing](docs/RELEASING.md).

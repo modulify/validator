@@ -18,9 +18,13 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Enable Corepack
+      shell: bash
+      run: corepack enable
+
     - name: Setup Node.js
       if: ${{ inputs.registry-url == '' }}
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: ${{ inputs.node-version }}
         cache: yarn
@@ -28,7 +32,7 @@ runs:
 
     - name: Setup Node.js with registry
       if: ${{ inputs.registry-url != '' }}
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: ${{ inputs.node-version }}
         registry-url: ${{ inputs.registry-url }}

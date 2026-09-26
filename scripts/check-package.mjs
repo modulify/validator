@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -15,7 +15,9 @@ const run = (command, args, cwd = consumerRoot) => execFileSync(command, args, {
 })
 
 const runtimeChecks = `
-assert.equal(root.isInteger, assertions.isInteger)
+for (const [name, assertion] of Object.entries(assertions)) {
+  assert.equal(root[name], assertion, name + ' differs between root and assertions')
+}
 assert.equal(typeof combinators.shape, 'function')
 assert.equal(predicates.isShape({ name: [predicates.isString, false] })({}), true)
 assert.equal(predicates.isShape({ name: [predicates.isString, false] })({ name: 2 }), false)
@@ -74,7 +76,17 @@ try {
   await writeFile(join(consumerRoot, 'package.json'), JSON.stringify({ private: true, type: 'module' }))
   run('npm', ['install', '--offline', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false', '--cache', join(consumerRoot, 'cache'), archive])
 
+  const installedDist = join(consumerRoot, 'node_modules/@modulify/validator/dist')
+  const runtimeFiles = (await readdir(installedDist)).filter(file => /\.(mjs|cjs)$/.test(file))
+  assert.equal(runtimeFiles.some(file => /-[\w-]{8}\.(mjs|cjs)$/.test(file)), false,
+    'The package contains hashed runtime chunks')
+
   for (const format of ['mjs', 'cjs']) {
+    const rootSource = await readFile(join(installedDist, `index.${format}`), 'utf8')
+    const assertionsSource = await readFile(join(installedDist, `assertions.${format}`), 'utf8')
+    assert.ok(rootSource.includes(`./assertions.${format}`), 'Root must share the public assertions module')
+    assert.ok(assertionsSource.includes(`./predicates.${format}`), 'Assertions must use the public predicates module directly')
+
     const imports = format === 'mjs'
       ? `import assert from 'node:assert/strict'
 import * as root from '@modulify/validator'

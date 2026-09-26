@@ -73,10 +73,10 @@ yarn build
 
 ## Important Project Rules
 - Commit messages follow Conventional Commits.
-- Before creating any commit, always reread `skills/commit-workflow/SKILL.md` and follow it as the source of truth for commit splitting, wording, scopes, and lockfile policy.
+- Before creating any commit, always reread `.agents/skills/commit-workflow/SKILL.md` and follow it as the source of truth for commit splitting, wording, scopes, and lockfile policy.
 - Getter/helper functions must be free of side effects. Side effects are allowed only by prior agreement and only when there are strong, explicit reasons.
 
 ## Local Skills
-- `skills/commit-workflow/SKILL.md` - rules for splitting changes into commits and writing changelog-friendly Conventional Commit messages.
-- `skills/coverage-recovery/SKILL.md` - workflow for analyzing uncovered code paths and improving test coverage without adding artificial tests.
-- `skills/yarn-lock-conflict-resolution/SKILL.md` - safe procedure for resolving `yarn.lock` conflicts during merge or rebase.
+- `.agents/skills/commit-workflow/SKILL.md` - rules for splitting changes into commits and writing changelog-friendly Conventional Commit messages.
+- `.agents/skills/coverage-recovery/SKILL.md` - workflow for analyzing uncovered code paths and improving test coverage without adding artificial tests.
+- `.agents/skills/yarn-lock-conflict-resolution/SKILL.md` - safe procedure for resolving `yarn.lock` conflicts during merge or rebase.

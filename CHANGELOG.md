@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0
+
+### ⚠ BREAKING CHANGE* **types:** Violation code contracts were enforced
+* **types:** Registered shape refinement codes require matching origin, name, and mandatory arguments. Public declarations require TypeScript 5.4 or newer.
+
+
+### Bug Fixes
+
+* **types:** Violation code contracts were enforced ([10b9c55](https://github.com/modulify/validator/commit/10b9c551c666ecc8e764dad511ce019dba636fab))
+
 ## 0.3.1
 
 ## 0.3.0
